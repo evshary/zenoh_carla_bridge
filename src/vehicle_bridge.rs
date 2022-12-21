@@ -16,7 +16,7 @@ impl VehicleBridge {
     pub fn new(z_session: Arc<Session>, name: String, actor: Vehicle) -> VehicleBridge {
         let publisher_velocity = z_session
             // TODO: Check whether Zenoh can receive the message
-            .declare_publisher(name.clone()+"rt/vehicle/status/velocity_status")
+            .declare_publisher(name.clone()+"/rt/vehicle/status/velocity_status")
             .res()
             .unwrap();
         let mut vehicle_actor = actor.clone();
@@ -32,7 +32,8 @@ impl VehicleBridge {
                 },
                 longitudinal_velocity: velocity.norm(),
                 lateral_velocity: 0.0,
-                heading_rate: vehicle_actor.get_wheel_steer_angle(VehicleWheelLocation::FL_Wheel) * -0.00866, // The heading rate is 1 deg to 0.00866, and the direction is reverse
+                // The heading rate is 1 deg to 0.00866, and the direction is reverse
+                heading_rate: vehicle_actor.get_wheel_steer_angle(VehicleWheelLocation::FL_Wheel) * -0.00866, 
             };
             let encoded = cdr::serialize::<_, _, CdrLe>(&velocity_msg, Infinite).unwrap();
             publisher_velocity.put(encoded).res().unwrap();
