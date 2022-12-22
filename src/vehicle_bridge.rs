@@ -56,6 +56,7 @@ impl<'a> VehicleBridge<'a> {
         });
         let mut vehicle_actor = actor.clone();
         let current_speed = speed.clone();
+        let max_wheel_steer_angle = vehicle_actor.physics_control().wheels[0].max_steer_angle;  // Get the max steering angle of front left wheel
         let subscriber_control_cmd = z_session
             .declare_subscriber(name.clone()+"/rt/external/selected/control_cmd")
             .callback_mut(move |sample| {
@@ -73,10 +74,10 @@ impl<'a> VehicleBridge<'a> {
                             control.brake = if cmd.longitudinal.speed <= 0.0 { 0.75 } else { 0.01 };
                         }
                         println!("target:{} current:{} diff:{}", cmd.longitudinal.speed, cmd.longitudinal.speed - speed_diff, speed_diff);
-                        // TODO: 0.3925 means 22.5 deg, but we should get the maximum steering degree first
-                        control.steer = -cmd.lateral.steering_tire_angle / 0.3925; // need to reverse the direction
+                        // Transform the angle from radian to degree and calculate the ratio based on max wheel angle
+                        control.steer = -cmd.lateral.steering_tire_angle * 180.0 / 3.14 / max_wheel_steer_angle;
                         vehicle_actor.apply_control(&control);
-                        println!("throttle: {}, break: {}\r", control.throttle, control.brake);
+                        println!("throttle: {}, break: {}, steer: {}\r", control.throttle, control.brake, -cmd.lateral.steering_tire_angle * 180.0 / 3.14);
                     },
                     Err(_) => {},
                 }
