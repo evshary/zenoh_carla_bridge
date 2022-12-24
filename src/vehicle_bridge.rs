@@ -1,4 +1,5 @@
 use atomic_float::AtomicF32;
+use log::info;
 use std::{
     sync::{atomic::Ordering, Arc},
     thread,
@@ -52,7 +53,7 @@ impl<'a> VehicleBridge<'a> {
             let encoded = cdr::serialize::<_, _, CdrLe>(&velocity_msg, Infinite).unwrap();
             publisher_velocity.put(encoded).res().unwrap();
             update_speed.store(velocity_msg.longitudinal_velocity, Ordering::Relaxed);
-            //println!("{}", velocity_msg.longitudinal_velocity);
+            //info!("{}", velocity_msg.longitudinal_velocity);
             // TODO: Check the published rate
             //thread::sleep(Duration::from_millis(1000));
             thread::sleep(Duration::from_millis(33)); // 30Hz
@@ -84,7 +85,7 @@ impl<'a> VehicleBridge<'a> {
                         0.01
                     };
                 }
-                println!(
+                info!(
                     "target:{} current:{} diff:{}",
                     cmd.longitudinal.speed,
                     cmd.longitudinal.speed - speed_diff,
@@ -94,7 +95,7 @@ impl<'a> VehicleBridge<'a> {
                 control.steer =
                     -cmd.lateral.steering_tire_angle * 180.0 / 3.14 / max_wheel_steer_angle;
                 vehicle_actor.apply_control(&control);
-                println!(
+                info!(
                     "throttle: {}, break: {}, steer: {}\r",
                     control.throttle,
                     control.brake,

@@ -7,6 +7,7 @@ use carla::{
 };
 pub use clap::Parser;
 use std::{sync::Arc, thread, time::Duration};
+use log::info;
 use zenoh::prelude::sync::*;
 
 /// Command line options
@@ -19,12 +20,14 @@ struct Opts {
 }
 
 fn main() {
+    pretty_env_logger::init();
+
     let Opts {
         carla_address,
         carla_port,
     } = Opts::parse();
 
-    println!("Running Carla Autoware Zenoh bridge...");
+    info!("Running Carla Autoware Zenoh bridge...");
     let z_session = Arc::new(zenoh::open(Config::default()).res().unwrap());
 
     let client = Client::connect(&carla_address, carla_port, None);
@@ -38,22 +41,22 @@ fn main() {
                     .find(|attr| attr.id() == "role_name")
                     .unwrap()
                     .value_string();
-                println!("Detect vehicles {}", role_name);
+                info!("Detect vehicles {}", role_name);
                 let v_bridge =
                     vehicle_bridge::VehicleBridge::new(z_session.clone(), role_name, actor);
                 vehicle_bridge_list.push(v_bridge);
             }
             ActorKind::Sensor(_) => {
-                println!("Detect sensors");
+                info!("Detect sensors");
             }
             ActorKind::TrafficLight(_) => {
-                println!("Detect traffic light");
+                info!("Detect traffic light");
             }
             ActorKind::TrafficSign(_) => {
-                println!("Detect traffic sign");
+                info!("Detect traffic sign");
             }
             ActorKind::Other(_) => {
-                println!("Detect others");
+                info!("Detect others");
             }
         }
     }
