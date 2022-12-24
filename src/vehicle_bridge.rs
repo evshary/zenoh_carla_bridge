@@ -63,57 +63,58 @@ impl<'a> VehicleBridge<'a> {
         let subscriber_control_cmd = z_session
             .declare_subscriber(name.clone() + "/rt/external/selected/control_cmd")
             .callback_mut(move |sample| {
-                match cdr::deserialize_from::<_, autoware_type::AckermannControlCommand, _>(
-                    sample.payload.reader(),
-                    cdr::size::Infinite,
-                ) {
-                    Ok(cmd) => {
-                        let mut control = vehicle_actor.control();
-                        // The algorithm is from https://github.com/hatem-darweesh/op_bridge/blob/ros2/op_bridge/op_ros2_agent.py#L219
-                        // TODO: Check whether it works while reverse.
-                        let speed_diff =
-                            cmd.longitudinal.speed - current_speed.load(Ordering::Relaxed);
-                        if speed_diff > 0.0 {
-                            control.throttle = 0.75;
-                            control.brake = 0.0;
-                        } else if speed_diff < 0.0 {
-                            control.throttle = 0.0;
-                            control.brake = if cmd.longitudinal.speed <= 0.0 {
-                                0.75
-                            } else {
-                                0.01
-                            };
-                        }
-                        println!(
-                            "target:{} current:{} diff:{}",
-                            cmd.longitudinal.speed,
-                            cmd.longitudinal.speed - speed_diff,
-                            speed_diff
-                        );
-                        // Transform the angle from radian to degree and calculate the ratio based on max wheel angle
-                        control.steer =
-                            -cmd.lateral.steering_tire_angle * 180.0 / 3.14 / max_wheel_steer_angle;
-                        vehicle_actor.apply_control(&control);
-                        println!(
-                            "throttle: {}, break: {}, steer: {}\r",
-                            control.throttle,
-                            control.brake,
-                            -cmd.lateral.steering_tire_angle * 180.0 / 3.14
-                        );
-                    }
-                    Err(_) => {}
+                let result: Result<autoware_type::AckermannControlCommand, _> =
+                    cdr::deserialize_from(sample.payload.reader(), cdr::size::Infinite);
+                let Ok(cmd) = result else {
+                    return;
+                };
+
+                let mut control = vehicle_actor.control();
+                // The algorithm is from https://github.com/hatem-darweesh/op_bridge/blob/ros2/op_bridge/op_ros2_agent.py#L219
+                // TODO: Check whether it works while reverse.
+                let speed_diff = cmd.longitudinal.speed - current_speed.load(Ordering::Relaxed);
+                if speed_diff > 0.0 {
+                    control.throttle = 0.75;
+                    control.brake = 0.0;
+                } else if speed_diff < 0.0 {
+                    control.throttle = 0.0;
+                    control.brake = if cmd.longitudinal.speed <= 0.0 {
+                        0.75
+                    } else {
+                        0.01
+                    };
                 }
+                println!(
+                    "target:{} current:{} diff:{}",
+                    cmd.longitudinal.speed,
+                    cmd.longitudinal.speed - speed_diff,
+                    speed_diff
+                );
+                // Transform the angle from radian to degree and calculate the ratio based on max wheel angle
+                control.steer =
+                    -cmd.lateral.steering_tire_angle * 180.0 / 3.14 / max_wheel_steer_angle;
+                vehicle_actor.apply_control(&control);
+                println!(
+                    "throttle: {}, break: {}, steer: {}\r",
+                    control.throttle,
+                    control.brake,
+                    -cmd.lateral.steering_tire_angle * 180.0 / 3.14
+                );
             })
             .res()
             .unwrap();
         let _subscriber_gate_mode = z_session
             .declare_subscriber(name.clone() + "/rt/control/gate_mode_cmd")
-            .callback_mut(move |_| {})
+            .callback_mut(move |_| {
+                // TODO
+            })
             .res()
             .unwrap();
         let _subscriber_gear_cmd = z_session
             .declare_subscriber(name.clone() + "/rt/external/selected/gear_cmd")
-            .callback_mut(move |_| {})
+            .callback_mut(move |_| {
+                // TODO
+            })
             .res()
             .unwrap();
         VehicleBridge {
