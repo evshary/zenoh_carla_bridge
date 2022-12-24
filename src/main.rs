@@ -5,14 +5,29 @@ use carla::{
     client::{ActorKind, Client},
     prelude::*,
 };
+pub use clap::Parser;
 use std::{sync::Arc, thread, time::Duration};
 use zenoh::prelude::sync::*;
 
+/// Command line options
+#[derive(Debug, Clone, Parser)]
+struct Opts {
+    #[clap(long, default_value = "127.0.0.1")]
+    pub carla_address: String,
+    #[clap(long, default_value = "2000")]
+    pub carla_port: u16,
+}
+
 fn main() {
+    let Opts {
+        carla_address,
+        carla_port,
+    } = Opts::parse();
+
     println!("Running Carla Autoware Zenoh bridge...");
     let z_session = Arc::new(zenoh::open(Config::default()).res().unwrap());
 
-    let client = Client::connect("127.0.0.1", 2000, None);
+    let client = Client::connect(&carla_address, carla_port, None);
     let mut vehicle_bridge_list = Vec::new();
     for actor in client.world().actors().iter() {
         match actor.into_kinds() {
