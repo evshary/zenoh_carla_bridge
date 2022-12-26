@@ -16,10 +16,11 @@ use crate::autoware_type;
 
 pub struct VehicleBridge<'a> {
     _vehicle_name: String,
-    _subscriber_control_cmd: Subscriber<'a, ()>,
     actor: Vehicle,
-    speed: Arc<AtomicF32>,
+    _subscriber_control_cmd: Subscriber<'a, ()>,
+    _subscriber_gear_cmd: Subscriber<'a, ()>,
     publisher_velocity: Publisher<'a>,
+    speed: Arc<AtomicF32>,
 }
 
 impl<'a> VehicleBridge<'a> {
@@ -84,10 +85,26 @@ impl<'a> VehicleBridge<'a> {
             })
             .res()
             .unwrap();
-        let _subscriber_gear_cmd = z_session
+        let mut vehicle_actor = actor.clone();
+        let subscriber_gear_cmd = z_session
             .declare_subscriber(name.clone() + "/rt/external/selected/gear_cmd")
-            .callback_mut(move |_| {
-                // TODO
+            .callback_mut(move |sample| {
+                match cdr::deserialize_from::<_, autoware_type::GearCommand, _>(
+                    sample.payload.reader(),
+                    cdr::size::Infinite,
+                ) {
+                    Ok(gearcmd) => {
+                        let mut control = vehicle_actor.control();
+                        control.reverse = gearcmd.command == autoware_type::GEAR_CMD_REVERSE;
+                        control.gear = if gearcmd.command == autoware_type::GEAR_CMD_REVERSE {
+                            -1
+                        } else {
+                            1
+                        };
+                        vehicle_actor.apply_control(&control);
+                    }
+                    Err(_) => {}
+                }
             })
             .res()
             .unwrap();
@@ -96,6 +113,7 @@ impl<'a> VehicleBridge<'a> {
             _vehicle_name: name,
             actor,
             _subscriber_control_cmd: subscriber_control_cmd,
+            _subscriber_gear_cmd: subscriber_gear_cmd,
             publisher_velocity,
             speed,
         }
