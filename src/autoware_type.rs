@@ -1,4 +1,4 @@
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct TimeStamp {
@@ -14,7 +14,7 @@ pub struct ServiceHeader {
 
 #[derive(Serialize, Deserialize, PartialEq)]
 pub struct GateMode {
-    pub data: u8,  // 0: AUTO, 1: EXTERNAL
+    pub data: u8, // 0: AUTO, 1: EXTERNAL
 }
 
 #[derive(Serialize, Deserialize, PartialEq)]
@@ -39,13 +39,13 @@ struct ResponseStatus {
 */
 
 #[allow(dead_code)]
-pub const GEAR_CMD_DRIVE   : u8 = 2;
+pub const GEAR_CMD_DRIVE: u8 = 2;
 #[allow(dead_code)]
-pub const GEAR_CMD_REVERSE : u8 = 20;
+pub const GEAR_CMD_REVERSE: u8 = 20;
 #[allow(dead_code)]
-pub const GEAR_CMD_PARK    : u8 = 22;
+pub const GEAR_CMD_PARK: u8 = 22;
 #[allow(dead_code)]
-pub const GEAR_CMD_LOW     : u8 = 23;
+pub const GEAR_CMD_LOW: u8 = 23;
 #[derive(Serialize, Deserialize, PartialEq)]
 pub struct GearCommand {
     pub ts: TimeStamp,
@@ -85,5 +85,5 @@ pub struct LongitudinalCommand {
 pub struct AckermannControlCommand {
     pub ts: TimeStamp,
     pub lateral: AckermannLateralCommand,
-    pub longitudinal: LongitudinalCommand, 
+    pub longitudinal: LongitudinalCommand,
 }
