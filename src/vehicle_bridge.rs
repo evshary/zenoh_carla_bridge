@@ -157,6 +157,10 @@ impl<'a> VehicleBridge<'a> {
                 .get_wheel_steer_angle(VehicleWheelLocation::FL_Wheel)
                 * -0.00866,
         };
+        info!(
+            "Carla => Autoware: current velocity: {}",
+            velocity_msg.longitudinal_velocity
+        );
         let encoded = cdr::serialize::<_, _, CdrLe>(&velocity_msg, Infinite).unwrap();
         self.publisher_velocity.put(encoded).res().unwrap();
         self.speed
@@ -164,8 +168,7 @@ impl<'a> VehicleBridge<'a> {
         //info!("{}", velocity_msg.longitudinal_velocity);
     }
 
-    pub fn step(&mut self, elapsed_sec: f64) {
-        self.pub_current_velocity();
+    fn update_carla_control(&mut self, elapsed_sec: f64) {
         if let Ok(cmd) = self.cmd_rx.try_recv() {
             let AckermannControlCommand {
                 lateral:
@@ -182,7 +185,7 @@ impl<'a> VehicleBridge<'a> {
                 ..
             } = cmd;
             info!(
-                "speed:{} accel:{} steering_tire_angle:{}",
+                "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
                 speed,
                 acceleration,
                 -steering_tire_angle.to_degrees()
@@ -194,6 +197,10 @@ impl<'a> VehicleBridge<'a> {
                 speed: speed as f64,
                 accel: acceleration as f64,
             });
+            info!(
+                "Autoware => Carla: elapse_sec:{} current_speed:{} pitch_radians:{}",
+                elapsed_sec, current_speed, pitch_radians
+            );
             let (
                 Output {
                     throttle,
@@ -206,7 +213,10 @@ impl<'a> VehicleBridge<'a> {
             ) = self
                 .controller
                 .step(elapsed_sec, current_speed as f64, pitch_radians as f64);
-            info!("throttle:{}, brake:{}, steer:{}", throttle, brake, steer);
+            info!(
+                "Autoware => Carla: throttle:{}, brake:{}, steer:{}",
+                throttle, brake, steer
+            );
 
             self.actor.apply_control(&VehicleControl {
                 throttle: throttle as f32,
@@ -218,5 +228,10 @@ impl<'a> VehicleBridge<'a> {
                 gear: 0,
             });
         }
+    }
+
+    pub fn step(&mut self, elapsed_sec: f64) {
+        self.pub_current_velocity();
+        self.update_carla_control(elapsed_sec);
     }
 }
