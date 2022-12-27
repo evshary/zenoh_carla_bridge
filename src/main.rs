@@ -7,6 +7,7 @@ use carla::{
 };
 pub use clap::Parser;
 use log::info;
+use std::time::SystemTime;
 use zenoh::prelude::sync::*;
 
 /// Command line options
@@ -61,11 +62,13 @@ fn main() {
         }
     }
 
+    let mut last_time = SystemTime::now();
     loop {
-        world.wait_for_tick();
-
+        let elapsed_time = last_time.elapsed().unwrap_or_default().as_secs_f64();
         vehicle_bridge_list
             .iter_mut()
-            .for_each(|bridge| bridge.step());
+            .for_each(|bridge| bridge.step(elapsed_time));
+        last_time = SystemTime::now();
+        world.wait_for_tick();
     }
 }

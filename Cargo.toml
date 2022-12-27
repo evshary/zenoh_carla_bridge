@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 zenoh = "0.6.0-beta.1"
-carla = "0.5.0"
+carla = "0.6.0"
 serde = "1.0.147"
 serde_derive = "1.0.147"
 cdr = "0.2.4"
@@ -15,3 +15,4 @@ atomic_float = "0.1.0"
 clap = { version = "4.0.32", features = ["derive"] }
 log = "0.4.17"
 pretty_env_logger = "0.4.0"
+carla-ackermann = "0.1.0"

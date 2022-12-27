@@ -445,9 +445,9 @@ checksum = "c1db59621ec70f09c5e9b597b220c7a2b43611f4710dc03ceb8748637775692c"
 
 [[package]]
 name = "carla"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5678cdf4fc051d9082a4dfc1a6569cfd7661369e76d9e2113dc90c67bfba4de"
+checksum = "9d757a2d76a030f84547dcd51bc449011c1358f1b0039a99e23689281e854e26"
 dependencies = [
  "anyhow",
  "autocxx",
@@ -459,6 +459,17 @@ dependencies = [
  "ndarray",
  "once_cell",
  "static_assertions",
+]
+
+[[package]]
+name = "carla-ackermann"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e2dac19100c8dbd0ada02242994a3adf68d3e41dc1970fb281f0df172092ac3"
+dependencies = [
+ "carla",
+ "noisy_float",
+ "pid",
 ]
 
 [[package]]
@@ -502,9 +513,9 @@ dependencies = [
 
 [[package]]
 name = "carla-sys"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3438018024c76b0104e4f3af3f0bd535229a979e0961167689c261a1230f507a"
+checksum = "741153a40ca778655f98f227eb8b550954dad1c0dee9cfe5e7199da39c925ea9"
 dependencies = [
  "autocxx",
  "autocxx-build",
@@ -519,6 +530,7 @@ version = "0.1.0"
 dependencies = [
  "atomic_float",
  "carla",
+ "carla-ackermann",
  "cdr",
  "clap 4.0.32",
  "log",
@@ -1640,6 +1652,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43794a0ace135be66a25d3ae77d41b91615fb68ae937f904090203e81f755b65"
 
 [[package]]
+name = "noisy_float"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "978fe6e6ebc0bf53de533cd456ca2d9de13de13856eda1518a285d7705a213af"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "nom"
 version = "7.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1878,6 +1899,15 @@ checksum = "e6d5014253a1331579ce62aa67443b4a658c5e7dd03d4bc6d302b94474888143"
 dependencies = [
  "fixedbitset",
  "indexmap",
+]
+
+[[package]]
+name = "pid"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d81764342f0ec3d969b9898925e5b0dc31c95466cb70a79a3064b33eb3b5480a"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
