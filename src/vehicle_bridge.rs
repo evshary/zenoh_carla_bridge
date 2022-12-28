@@ -1,10 +1,6 @@
 use atomic_float::AtomicF32;
 use log::info;
-use std::sync::{
-    atomic::Ordering,
-    mpsc::{self, Receiver},
-    Arc,
-};
+use std::sync::{atomic::Ordering, Arc, Mutex};
 
 use cdr::{CdrLe, Infinite};
 use zenoh::{
@@ -22,7 +18,7 @@ use carla_ackermann::{
 };
 
 use crate::autoware_type::{
-    self, AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
+    self, AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand, TimeStamp,
 };
 
 pub struct VehicleBridge<'a> {
@@ -33,13 +29,11 @@ pub struct VehicleBridge<'a> {
     publisher_velocity: Publisher<'a>,
     speed: Arc<AtomicF32>,
     controller: VehicleController,
-    cmd_rx: Receiver<AckermannControlCommand>,
+    current_ackermann_cmd: Arc<Mutex<AckermannControlCommand>>,
 }
 
 impl<'a> VehicleBridge<'a> {
     pub fn new(z_session: &'a Session, name: String, actor: Vehicle) -> VehicleBridge<'a> {
-        let (cmd_tx, cmd_rx) = mpsc::sync_channel(10);
-
         let physics_control = actor.physics_control();
         let controller = VehicleController::from_physics_control(&physics_control, None);
 
@@ -50,6 +44,21 @@ impl<'a> VehicleBridge<'a> {
             .unwrap();
         let speed = Arc::new(AtomicF32::new(0.0));
 
+        let current_ackermann_cmd = Arc::new(Mutex::new(AckermannControlCommand {
+            ts: TimeStamp { sec: 0, nsec: 0 },
+            lateral: AckermannLateralCommand {
+                ts: TimeStamp { sec: 0, nsec: 0 },
+                steering_tire_angle: 0.0,
+                steering_tire_rotation_rate: 0.0,
+            },
+            longitudinal: LongitudinalCommand {
+                ts: TimeStamp { sec: 0, nsec: 0 },
+                speed: 0.0,
+                acceleration: 0.0,
+                jerk: 0.0,
+            },
+        }));
+        let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
             .declare_subscriber(name.clone() + "/rt/external/selected/control_cmd")
             .callback_mut(move |sample| {
@@ -58,39 +67,8 @@ impl<'a> VehicleBridge<'a> {
                 let Ok(cmd) = result else {
                     return;
                 };
-                cmd_tx.send(cmd).unwrap();
-
-                //let mut control = vehicle_actor.control();
-                //// The algorithm is from https://github.com/hatem-darweesh/op_bridge/blob/ros2/op_bridge/op_ros2_agent.py#L219
-                //// TODO: Check whether it works while reverse.
-                //let speed_diff = cmd.longitudinal.speed - current_speed.load(Ordering::Relaxed);
-                //if speed_diff > 0.0 {
-                //    control.throttle = 0.75;
-                //    control.brake = 0.0;
-                //} else if speed_diff < 0.0 {
-                //    control.throttle = 0.0;
-                //    control.brake = if cmd.longitudinal.speed <= 0.0 {
-                //        0.75
-                //    } else {
-                //        0.01
-                //    };
-                //}
-                //info!(
-                //    "target:{} current:{} diff:{}",
-                //    cmd.longitudinal.speed,
-                //    cmd.longitudinal.speed - speed_diff,
-                //    speed_diff
-                //);
-                //// Transform the angle from radian to degree and calculate the ratio based on max wheel angle
-                //control.steer =
-                //    -cmd.lateral.steering_tire_angle * 180.0 / 3.14 / max_wheel_steer_angle;
-                //vehicle_actor.apply_control(&control);
-                //info!(
-                //    "throttle: {}, break: {}, steer: {}\r",
-                //    control.throttle,
-                //    control.brake,
-                //    -cmd.lateral.steering_tire_angle * 180.0 / 3.14
-                //);
+                let mut cloned_cmd = cloned_cmd.lock().unwrap();
+                *cloned_cmd = cmd;
             })
             .res()
             .unwrap();
@@ -134,7 +112,7 @@ impl<'a> VehicleBridge<'a> {
             publisher_velocity,
             speed,
             controller,
-            cmd_rx,
+            current_ackermann_cmd,
         }
     }
 
@@ -169,65 +147,63 @@ impl<'a> VehicleBridge<'a> {
     }
 
     fn update_carla_control(&mut self, elapsed_sec: f64) {
-        if let Ok(cmd) = self.cmd_rx.try_recv() {
-            let AckermannControlCommand {
-                lateral:
-                    AckermannLateralCommand {
-                        steering_tire_angle,
-                        ..
-                    },
-                longitudinal:
-                    LongitudinalCommand {
-                        speed,
-                        acceleration,
-                        ..
-                    },
-                ..
-            } = cmd;
-            info!(
-                "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
-                speed,
-                acceleration,
-                -steering_tire_angle.to_degrees()
-            );
-            let current_speed = self.actor.velocity().norm();
-            let (_, pitch_radians, _) = self.actor.transform().rotation.euler_angles();
-            self.controller.set_target(TargetRequest {
-                steering_angle: -steering_tire_angle.to_degrees() as f64,
-                speed: speed as f64,
-                accel: acceleration as f64,
-            });
-            info!(
-                "Autoware => Carla: elapse_sec:{} current_speed:{} pitch_radians:{}",
-                elapsed_sec, current_speed, pitch_radians
-            );
-            let (
-                Output {
-                    throttle,
-                    brake,
-                    steer,
-                    reverse,
-                    hand_brake,
+        let AckermannControlCommand {
+            lateral:
+                AckermannLateralCommand {
+                    steering_tire_angle,
+                    ..
                 },
-                _,
-            ) = self
-                .controller
-                .step(elapsed_sec, current_speed as f64, pitch_radians as f64);
-            info!(
-                "Autoware => Carla: throttle:{}, brake:{}, steer:{}",
-                throttle, brake, steer
-            );
-
-            self.actor.apply_control(&VehicleControl {
-                throttle: throttle as f32,
-                steer: steer as f32,
-                brake: brake as f32,
-                hand_brake,
+            longitudinal:
+                LongitudinalCommand {
+                    speed,
+                    acceleration,
+                    ..
+                },
+            ..
+        } = *self.current_ackermann_cmd.lock().unwrap();
+        info!(
+            "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
+            speed,
+            acceleration,
+            -steering_tire_angle.to_degrees()
+        );
+        let current_speed = self.actor.velocity().norm();
+        let (_, pitch_radians, _) = self.actor.transform().rotation.euler_angles();
+        self.controller.set_target(TargetRequest {
+            steering_angle: -steering_tire_angle.to_degrees() as f64,
+            speed: speed as f64,
+            accel: acceleration as f64,
+        });
+        info!(
+            "Autoware => Carla: elapse_sec:{} current_speed:{} pitch_radians:{}",
+            elapsed_sec, current_speed, pitch_radians
+        );
+        let (
+            Output {
+                throttle,
+                brake,
+                steer,
                 reverse,
-                manual_gear_shift: false,
-                gear: 0,
-            });
-        }
+                hand_brake,
+            },
+            _,
+        ) = self
+            .controller
+            .step(elapsed_sec, current_speed as f64, pitch_radians as f64);
+        info!(
+            "Autoware => Carla: throttle:{}, brake:{}, steer:{}",
+            throttle, brake, steer
+        );
+
+        self.actor.apply_control(&VehicleControl {
+            throttle: throttle as f32,
+            steer: steer as f32,
+            brake: brake as f32,
+            hand_brake,
+            reverse,
+            manual_gear_shift: false,
+            gear: 0,
+        });
     }
 
     pub fn step(&mut self, elapsed_sec: f64) {

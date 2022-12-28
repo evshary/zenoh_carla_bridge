@@ -8,6 +8,7 @@ use carla::{
 pub use clap::Parser;
 use log::info;
 use std::time::SystemTime;
+use std::{thread, time::Duration};
 use zenoh::prelude::sync::*;
 
 /// Command line options
@@ -70,5 +71,7 @@ fn main() {
             .for_each(|bridge| bridge.step(elapsed_time));
         last_time = SystemTime::now();
         world.wait_for_tick();
+        // Sleep here, since the elapsed_time should be larger than certain value or carla_ackermann will have wrong result.
+        thread::sleep(Duration::from_millis(100));
     }
 }
