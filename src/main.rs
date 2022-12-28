@@ -34,6 +34,7 @@ fn main() {
     let client = Client::connect(&carla_address, carla_port, None);
     let world = client.world();
 
+    // TODO: We should put actor detected in the loop
     let mut vehicle_bridge_list = Vec::new();
     for actor in world.actors().iter() {
         match actor.into_kinds() {

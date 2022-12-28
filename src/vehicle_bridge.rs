@@ -38,12 +38,12 @@ impl<'a> VehicleBridge<'a> {
         let controller = VehicleController::from_physics_control(&physics_control, None);
 
         let publisher_velocity = z_session
-            // TODO: Check whether Zenoh can receive the message
             .declare_publisher(name.clone() + "/rt/vehicle/status/velocity_status")
             .res()
             .unwrap();
         let speed = Arc::new(AtomicF32::new(0.0));
 
+        // TODO: We can use default value here
         let current_ackermann_cmd = Arc::new(Mutex::new(AckermannControlCommand {
             ts: TimeStamp { sec: 0, nsec: 0 },
             lateral: AckermannLateralCommand {
@@ -79,27 +79,10 @@ impl<'a> VehicleBridge<'a> {
             })
             .res()
             .unwrap();
-        //let mut vehicle_actor = actor.clone();
         let subscriber_gear_cmd = z_session
             .declare_subscriber(name.clone() + "/rt/external/selected/gear_cmd")
             .callback_mut(move |_sample| {
-                // TODO
-                //match cdr::deserialize_from::<_, autoware_type::GearCommand, _>(
-                //    sample.payload.reader(),
-                //    cdr::size::Infinite,
-                //) {
-                //    Ok(gearcmd) => {
-                //        let mut control = vehicle_actor.control();
-                //        control.reverse = gearcmd.command == autoware_type::GEAR_CMD_REVERSE;
-                //        control.gear = if gearcmd.command == autoware_type::GEAR_CMD_REVERSE {
-                //            -1
-                //        } else {
-                //            1
-                //        };
-                //        vehicle_actor.apply_control(&control);
-                //    }
-                //    Err(_) => {}
-                //}
+                // TODO: We don't this now, since reverse will be calculated while subscribing control_cmd
             })
             .res()
             .unwrap();
