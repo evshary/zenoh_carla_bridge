@@ -16,3 +16,4 @@ clap = { version = "4.0.32", features = ["derive"] }
 log = "0.4.17"
 pretty_env_logger = "0.4.0"
 carla-ackermann = "0.1.0"
+r2r = "0.6.4"
