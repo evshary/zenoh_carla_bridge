@@ -1,11 +1,12 @@
 use atomic_float::AtomicF32;
-use log::info;
+use log::debug;
 use r2r::{
     autoware_auto_control_msgs::msg::{
         AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
     },
     autoware_auto_vehicle_msgs::msg::VelocityReport,
-    std_msgs::msg::Header, builtin_interfaces::msg::Time,
+    builtin_interfaces::msg::Time,
+    std_msgs::msg::Header,
 };
 use std::sync::{atomic::Ordering, Arc, Mutex};
 
@@ -25,7 +26,7 @@ use carla_ackermann::{
 };
 
 pub struct VehicleBridge<'a> {
-    _vehicle_name: String,
+    vehicle_name: String,
     actor: Vehicle,
     _subscriber_control_cmd: Subscriber<'a, ()>,
     _subscriber_gear_cmd: Subscriber<'a, ()>,
@@ -78,7 +79,7 @@ impl<'a> VehicleBridge<'a> {
             .unwrap();
 
         VehicleBridge {
-            _vehicle_name: name,
+            vehicle_name: name,
             actor,
             _subscriber_control_cmd: subscriber_control_cmd,
             _subscriber_gear_cmd: subscriber_gear_cmd,
@@ -108,7 +109,7 @@ impl<'a> VehicleBridge<'a> {
                 .get_wheel_steer_angle(VehicleWheelLocation::FL_Wheel)
                 * -0.00866,
         };
-        info!(
+        debug!(
             "Carla => Autoware: current velocity: {}",
             velocity_msg.longitudinal_velocity
         );
@@ -116,7 +117,6 @@ impl<'a> VehicleBridge<'a> {
         self.publisher_velocity.put(encoded).res().unwrap();
         self.speed
             .store(velocity_msg.longitudinal_velocity, Ordering::Relaxed);
-        //info!("{}", velocity_msg.longitudinal_velocity);
     }
 
     fn update_carla_control(&mut self, elapsed_sec: f64) {
@@ -134,7 +134,7 @@ impl<'a> VehicleBridge<'a> {
                 },
             ..
         } = *self.current_ackermann_cmd.lock().unwrap();
-        info!(
+        debug!(
             "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
             speed,
             acceleration,
@@ -147,7 +147,7 @@ impl<'a> VehicleBridge<'a> {
             speed: speed as f64,
             accel: acceleration as f64,
         });
-        info!(
+        debug!(
             "Autoware => Carla: elapse_sec:{} current_speed:{} pitch_radians:{}",
             elapsed_sec, current_speed, pitch_radians
         );
@@ -163,7 +163,7 @@ impl<'a> VehicleBridge<'a> {
         ) = self
             .controller
             .step(elapsed_sec, current_speed as f64, pitch_radians as f64);
-        info!(
+        debug!(
             "Autoware => Carla: throttle:{}, brake:{}, steer:{}",
             throttle, brake, steer
         );
@@ -182,5 +182,9 @@ impl<'a> VehicleBridge<'a> {
     pub fn step(&mut self, stamp: &Time, elapsed_sec: f64) {
         self.pub_current_velocity(stamp);
         self.update_carla_control(elapsed_sec);
+    }
+
+    pub fn vehicle_name(&self) -> String {
+        self.vehicle_name.clone()
     }
 }
