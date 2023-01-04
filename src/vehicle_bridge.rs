@@ -1,5 +1,12 @@
 use atomic_float::AtomicF32;
 use log::info;
+use r2r::{
+    autoware_auto_control_msgs::msg::{
+        AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
+    },
+    autoware_auto_vehicle_msgs::msg::VelocityReport,
+    std_msgs::msg::Header, builtin_interfaces::msg::Time,
+};
 use std::sync::{atomic::Ordering, Arc, Mutex};
 
 use cdr::{CdrLe, Infinite};
@@ -15,10 +22,6 @@ use carla::{
 use carla_ackermann::{
     vehicle_control::{Output, TargetRequest},
     VehicleController,
-};
-
-use crate::autoware_type::{
-    self, AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand, TimeStamp,
 };
 
 pub struct VehicleBridge<'a> {
@@ -38,31 +41,18 @@ impl<'a> VehicleBridge<'a> {
         let controller = VehicleController::from_physics_control(&physics_control, None);
 
         let publisher_velocity = z_session
-            .declare_publisher(name.clone() + "/rt/vehicle/status/velocity_status")
+            .declare_publisher(format!("{name}/rt/vehicle/status/velocity_status"))
             .res()
             .unwrap();
         let speed = Arc::new(AtomicF32::new(0.0));
 
         // TODO: We can use default value here
-        let current_ackermann_cmd = Arc::new(Mutex::new(AckermannControlCommand {
-            ts: TimeStamp { sec: 0, nsec: 0 },
-            lateral: AckermannLateralCommand {
-                ts: TimeStamp { sec: 0, nsec: 0 },
-                steering_tire_angle: 0.0,
-                steering_tire_rotation_rate: 0.0,
-            },
-            longitudinal: LongitudinalCommand {
-                ts: TimeStamp { sec: 0, nsec: 0 },
-                speed: 0.0,
-                acceleration: 0.0,
-                jerk: 0.0,
-            },
-        }));
+        let current_ackermann_cmd = Arc::new(Mutex::new(AckermannControlCommand::default()));
         let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
             .declare_subscriber(name.clone() + "/rt/external/selected/control_cmd")
             .callback_mut(move |sample| {
-                let result: Result<autoware_type::AckermannControlCommand, _> =
+                let result: Result<AckermannControlCommand, _> =
                     cdr::deserialize_from(sample.payload.reader(), cdr::size::Infinite);
                 let Ok(cmd) = result else {
                     return;
@@ -99,16 +89,16 @@ impl<'a> VehicleBridge<'a> {
         }
     }
 
-    fn pub_current_velocity(&mut self) {
+    fn pub_current_velocity(&mut self, stamp: &Time) {
         //let transform = vehicle_actor.transform();
         let velocity = self.actor.velocity();
         //let angular_velocity = vehicle_actor.angular_velocity();
         //let accel = vehicle_actor.acceleration();
-        let velocity_msg = autoware_type::CurrentVelocity {
-            header: autoware_type::StdMsgsHeader {
+        let velocity_msg = VelocityReport {
+            header: Header {
                 // TODO: Use correct timestamp
-                ts: autoware_type::TimeStamp { sec: 0, nsec: 0 },
-                frameid: String::from(""),
+                stamp: stamp.clone(),
+                frame_id: String::from(""),
             },
             longitudinal_velocity: velocity.norm(),
             lateral_velocity: 0.0,
@@ -189,8 +179,8 @@ impl<'a> VehicleBridge<'a> {
         });
     }
 
-    pub fn step(&mut self, elapsed_sec: f64) {
-        self.pub_current_velocity();
+    pub fn step(&mut self, stamp: &Time, elapsed_sec: f64) {
+        self.pub_current_velocity(stamp);
         self.update_carla_control(elapsed_sec);
     }
 }

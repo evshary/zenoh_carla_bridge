@@ -30,9 +30,10 @@ python3 PythonAPI/examples/manual_control.py --rolename "v1"
 ./zenoh-plugin-dds/target/release/zenoh-bridge-dds -s "v1"
 ```
 
-* Terminal4: Run carla_autoware_zenoh_bridge
+* Terminal4: Run carla\_autoware\_zenoh\_bridge
 
 ```shell
+source /path/to/autoware/install/setup.bash
 cargo run
 ```
 

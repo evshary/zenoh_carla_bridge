@@ -1,13 +1,14 @@
-mod autoware_type;
+// mod autoware_type;
 mod vehicle_bridge;
 
 use carla::{
     client::{ActorKind, Client},
     prelude::*,
 };
-pub use clap::Parser;
+use clap::Parser;
 use log::info;
-use std::time::SystemTime;
+use r2r::{Clock, ClockType};
+use std::time::Instant;
 use std::{thread, time::Duration};
 use zenoh::prelude::sync::*;
 
@@ -64,14 +65,19 @@ fn main() {
         }
     }
 
-    let mut last_time = SystemTime::now();
+    let mut last_time = Instant::now();
+    let mut clock = Clock::create(ClockType::RosTime).unwrap();
+
     loop {
-        let elapsed_time = last_time.elapsed().unwrap_or_default().as_secs_f64();
+        let elapsed_time = last_time.elapsed().as_secs_f64();
+        let time = Clock::to_builtin_time(&clock.get_now().unwrap());
+
         vehicle_bridge_list
             .iter_mut()
-            .for_each(|bridge| bridge.step(elapsed_time));
-        last_time = SystemTime::now();
+            .for_each(|bridge| bridge.step(&time, elapsed_time));
+        last_time = Instant::now();
         world.wait_for_tick();
+
         // Sleep here, since the elapsed_time should be larger than certain value or carla_ackermann will have wrong result.
         thread::sleep(Duration::from_millis(100));
     }
