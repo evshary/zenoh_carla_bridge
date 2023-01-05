@@ -59,8 +59,8 @@ fn main() -> Result<(), Error> {
                 .iter()
                 .map(|actor| (actor.id(), actor))
                 .collect();
-            let prev_actor_ids = bridge_list.keys().cloned().collect::<HashSet<_>>();
-            let cur_actor_ids = actor_list.keys().cloned().collect::<HashSet<_>>();
+            let prev_actor_ids: HashSet<u32> = bridge_list.keys().cloned().collect();
+            let cur_actor_ids: HashSet<u32> = actor_list.keys().cloned().collect();
             let added_ids = &cur_actor_ids - &prev_actor_ids;
             let deleted_ids = &prev_actor_ids - &cur_actor_ids;
 

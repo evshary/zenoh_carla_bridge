@@ -48,7 +48,7 @@ impl<'a> VehicleBridge<'a> {
         let current_ackermann_cmd = Arc::new(Mutex::new(AckermannControlCommand::default()));
         let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
-            .declare_subscriber(name.clone() + "/rt/external/selected/control_cmd")
+            .declare_subscriber(format!("{name}/rt/external/selected/control_cmd"))
             .callback_mut(move |sample| {
                 let result: Result<AckermannControlCommand, _> =
                     cdr::deserialize_from(sample.payload.reader(), cdr::size::Infinite);
@@ -60,13 +60,13 @@ impl<'a> VehicleBridge<'a> {
             })
             .res()?;
         let _subscriber_gate_mode = z_session
-            .declare_subscriber(name.clone() + "/rt/control/gate_mode_cmd")
+            .declare_subscriber(format!("{name}/rt/control/gate_mode_cmd"))
             .callback_mut(move |_| {
                 // TODO
             })
             .res()?;
         let subscriber_gear_cmd = z_session
-            .declare_subscriber(name.clone() + "/rt/external/selected/gear_cmd")
+            .declare_subscriber(format!("{name}/rt/external/selected/gear_cmd"))
             .callback_mut(move |_sample| {
                 // TODO: We don't this now, since reverse will be calculated while subscribing control_cmd
             })
@@ -181,7 +181,7 @@ impl<'a> VehicleBridge<'a> {
         Ok(())
     }
 
-    pub fn vehicle_name(&self) -> String {
-        self.vehicle_name.clone()
+    pub fn vehicle_name(&self) -> &str {
+        &self.vehicle_name
     }
 }
