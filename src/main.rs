@@ -1,4 +1,3 @@
-// mod autoware_type;
 mod vehicle_bridge;
 
 use carla::{
@@ -9,9 +8,11 @@ use carla::{
 use clap::Parser;
 use log::info;
 use r2r::{Clock, ClockType};
-use std::collections::{HashMap, HashSet};
-use std::time::Instant;
-use std::{thread, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    thread,
+    time::{Duration, Instant},
+};
 use vehicle_bridge::VehicleBridge;
 use zenoh::prelude::sync::*;
 
