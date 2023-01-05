@@ -1,4 +1,5 @@
 use crate::error::Result;
+use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
 use carla::{
     client::{ActorBase, Vehicle},
@@ -18,7 +19,7 @@ use r2r::{
     builtin_interfaces::msg::Time,
     std_msgs::msg::Header,
 };
-use std::sync::{atomic::Ordering, Arc, Mutex};
+use std::sync::{atomic::Ordering, Arc};
 use zenoh::{
     buffers::reader::HasReader, prelude::sync::*, publication::Publisher, subscriber::Subscriber,
 };
@@ -31,7 +32,7 @@ pub struct VehicleBridge<'a> {
     publisher_velocity: Publisher<'a>,
     speed: Arc<AtomicF32>,
     controller: VehicleController,
-    current_ackermann_cmd: Arc<Mutex<AckermannControlCommand>>,
+    current_ackermann_cmd: Arc<ArcSwap<AckermannControlCommand>>,
 }
 
 impl<'a> VehicleBridge<'a> {
@@ -45,7 +46,8 @@ impl<'a> VehicleBridge<'a> {
         let speed = Arc::new(AtomicF32::new(0.0));
 
         // TODO: We can use default value here
-        let current_ackermann_cmd = Arc::new(Mutex::new(AckermannControlCommand::default()));
+        let current_ackermann_cmd =
+            Arc::new(ArcSwap::from_pointee(AckermannControlCommand::default()));
         let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
             .declare_subscriber(format!("{name}/rt/external/selected/control_cmd"))
@@ -55,8 +57,7 @@ impl<'a> VehicleBridge<'a> {
                 let Ok(cmd) = result else {
                     return;
                 };
-                let mut cloned_cmd = cloned_cmd.lock().unwrap();
-                *cloned_cmd = cmd;
+                cloned_cmd.store(Arc::new(cmd));
             })
             .res()?;
         let _subscriber_gate_mode = z_session
@@ -129,7 +130,7 @@ impl<'a> VehicleBridge<'a> {
                     ..
                 },
             ..
-        } = *self.current_ackermann_cmd.lock().unwrap();
+        } = **self.current_ackermann_cmd.load();
         debug!(
             "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
             speed,

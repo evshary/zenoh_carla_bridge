@@ -19,3 +19,4 @@ carla-ackermann = "0.1.0"
 r2r = "0.6.4"
 anyhow = { version = "1.0.68", features = ["backtrace"] }
 thiserror = "1.0.38"
+arc-swap = "1.6.0"
