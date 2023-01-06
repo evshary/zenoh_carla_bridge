@@ -8,8 +8,8 @@ edition = "2021"
 [dependencies]
 zenoh = "0.6.0-beta.1"
 carla = "0.6.0"
-serde = "1.0.147"
-serde_derive = "1.0.147"
+serde = "1.0.152"
+serde_derive = "1.0.152"
 cdr = "0.2.4"
 atomic_float = "0.1.0"
 clap = { version = "4.0.32", features = ["derive"] }
@@ -17,3 +17,6 @@ log = "0.4.17"
 pretty_env_logger = "0.4.0"
 carla-ackermann = "0.1.0"
 r2r = "0.6.4"
+anyhow = { version = "1.0.68", features = ["backtrace"] }
+thiserror = "1.0.38"
+arc-swap = "1.6.0"

@@ -1,4 +1,15 @@
+use crate::error::Result;
+use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
+use carla::{
+    client::{ActorBase, Vehicle},
+    rpc::{VehicleControl, VehicleWheelLocation},
+};
+use carla_ackermann::{
+    vehicle_control::{Output, TargetRequest},
+    VehicleController,
+};
+use cdr::{CdrLe, Infinite};
 use log::debug;
 use r2r::{
     autoware_auto_control_msgs::msg::{
@@ -8,21 +19,9 @@ use r2r::{
     builtin_interfaces::msg::Time,
     std_msgs::msg::Header,
 };
-use std::sync::{atomic::Ordering, Arc, Mutex};
-
-use cdr::{CdrLe, Infinite};
+use std::sync::{atomic::Ordering, Arc};
 use zenoh::{
     buffers::reader::HasReader, prelude::sync::*, publication::Publisher, subscriber::Subscriber,
-};
-
-use carla::{
-    client::{ActorBase, Vehicle},
-    rpc::{VehicleControl, VehicleWheelLocation},
-};
-
-use carla_ackermann::{
-    vehicle_control::{Output, TargetRequest},
-    VehicleController,
 };
 
 pub struct VehicleBridge<'a> {
@@ -33,52 +32,48 @@ pub struct VehicleBridge<'a> {
     publisher_velocity: Publisher<'a>,
     speed: Arc<AtomicF32>,
     controller: VehicleController,
-    current_ackermann_cmd: Arc<Mutex<AckermannControlCommand>>,
+    current_ackermann_cmd: Arc<ArcSwap<AckermannControlCommand>>,
 }
 
 impl<'a> VehicleBridge<'a> {
-    pub fn new(z_session: &'a Session, name: String, actor: Vehicle) -> VehicleBridge<'a> {
+    pub fn new(z_session: &'a Session, name: String, actor: Vehicle) -> Result<VehicleBridge<'a>> {
         let physics_control = actor.physics_control();
         let controller = VehicleController::from_physics_control(&physics_control, None);
 
         let publisher_velocity = z_session
             .declare_publisher(format!("{name}/rt/vehicle/status/velocity_status"))
-            .res()
-            .unwrap();
+            .res()?;
         let speed = Arc::new(AtomicF32::new(0.0));
 
         // TODO: We can use default value here
-        let current_ackermann_cmd = Arc::new(Mutex::new(AckermannControlCommand::default()));
+        let current_ackermann_cmd =
+            Arc::new(ArcSwap::from_pointee(AckermannControlCommand::default()));
         let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
-            .declare_subscriber(name.clone() + "/rt/external/selected/control_cmd")
+            .declare_subscriber(format!("{name}/rt/external/selected/control_cmd"))
             .callback_mut(move |sample| {
                 let result: Result<AckermannControlCommand, _> =
                     cdr::deserialize_from(sample.payload.reader(), cdr::size::Infinite);
                 let Ok(cmd) = result else {
                     return;
                 };
-                let mut cloned_cmd = cloned_cmd.lock().unwrap();
-                *cloned_cmd = cmd;
+                cloned_cmd.store(Arc::new(cmd));
             })
-            .res()
-            .unwrap();
+            .res()?;
         let _subscriber_gate_mode = z_session
-            .declare_subscriber(name.clone() + "/rt/control/gate_mode_cmd")
+            .declare_subscriber(format!("{name}/rt/control/gate_mode_cmd"))
             .callback_mut(move |_| {
                 // TODO
             })
-            .res()
-            .unwrap();
+            .res()?;
         let subscriber_gear_cmd = z_session
-            .declare_subscriber(name.clone() + "/rt/external/selected/gear_cmd")
+            .declare_subscriber(format!("{name}/rt/external/selected/gear_cmd"))
             .callback_mut(move |_sample| {
                 // TODO: We don't this now, since reverse will be calculated while subscribing control_cmd
             })
-            .res()
-            .unwrap();
+            .res()?;
 
-        VehicleBridge {
+        Ok(VehicleBridge {
             vehicle_name: name,
             actor,
             _subscriber_control_cmd: subscriber_control_cmd,
@@ -87,10 +82,10 @@ impl<'a> VehicleBridge<'a> {
             speed,
             controller,
             current_ackermann_cmd,
-        }
+        })
     }
 
-    fn pub_current_velocity(&mut self, stamp: &Time) {
+    fn pub_current_velocity(&mut self, stamp: &Time) -> Result<()> {
         //let transform = vehicle_actor.transform();
         let velocity = self.actor.velocity();
         //let angular_velocity = vehicle_actor.angular_velocity();
@@ -113,10 +108,12 @@ impl<'a> VehicleBridge<'a> {
             "Carla => Autoware: current velocity: {}",
             velocity_msg.longitudinal_velocity
         );
-        let encoded = cdr::serialize::<_, _, CdrLe>(&velocity_msg, Infinite).unwrap();
-        self.publisher_velocity.put(encoded).res().unwrap();
+        let encoded = cdr::serialize::<_, _, CdrLe>(&velocity_msg, Infinite)?;
+        self.publisher_velocity.put(encoded).res()?;
         self.speed
             .store(velocity_msg.longitudinal_velocity, Ordering::Relaxed);
+
+        Ok(())
     }
 
     fn update_carla_control(&mut self, elapsed_sec: f64) {
@@ -133,7 +130,7 @@ impl<'a> VehicleBridge<'a> {
                     ..
                 },
             ..
-        } = *self.current_ackermann_cmd.lock().unwrap();
+        } = **self.current_ackermann_cmd.load();
         debug!(
             "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
             speed,
@@ -179,12 +176,13 @@ impl<'a> VehicleBridge<'a> {
         });
     }
 
-    pub fn step(&mut self, stamp: &Time, elapsed_sec: f64) {
-        self.pub_current_velocity(stamp);
+    pub fn step(&mut self, stamp: &Time, elapsed_sec: f64) -> Result<()> {
+        self.pub_current_velocity(stamp)?;
         self.update_carla_control(elapsed_sec);
+        Ok(())
     }
 
-    pub fn vehicle_name(&self) -> String {
-        self.vehicle_name.clone()
+    pub fn vehicle_name(&self) -> &str {
+        &self.vehicle_name
     }
 }
