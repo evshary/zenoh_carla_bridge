@@ -1,4 +1,5 @@
 mod error;
+mod sensor_bridge;
 mod vehicle_bridge;
 
 use anyhow::Result;
@@ -11,6 +12,7 @@ use clap::Parser;
 use error::Error;
 use log::info;
 use r2r::{Clock, ClockType};
+use sensor_bridge::SensorBridge;
 use std::{
     collections::{HashMap, HashSet},
     thread,
@@ -77,8 +79,10 @@ fn main() -> Result<(), Error> {
                         let v_bridge = VehicleBridge::new(&z_session, role_name, actor)?;
                         bridge_list.insert(id, v_bridge);
                     }
-                    ActorKind::Sensor(_) => {
-                        //info!("Detect sensors");
+                    ActorKind::Sensor(actor) => {
+                        let sensor_type = actor.type_id();
+                        info!("Detect sensors {sensor_type}");
+                        let s_bridge = SensorBridge::new(actor, sensor_type)?;
                     }
                     ActorKind::TrafficLight(_) => {
                         //info!("Detect traffic light");
