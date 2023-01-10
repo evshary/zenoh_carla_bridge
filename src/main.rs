@@ -1,8 +1,10 @@
+mod bridge;
 mod error;
-mod sensor_bridge;
-mod vehicle_bridge;
 
 use anyhow::Result;
+use bridge::actor_bridge::ActorBridge;
+use bridge::sensor_bridge::SensorBridge;
+use bridge::vehicle_bridge::VehicleBridge;
 use carla::{
     client::{ActorKind, Client},
     prelude::*,
@@ -12,13 +14,11 @@ use clap::Parser;
 use error::Error;
 use log::info;
 use r2r::{Clock, ClockType};
-use sensor_bridge::SensorBridge;
 use std::{
     collections::{HashMap, HashSet},
     thread,
     time::{Duration, Instant},
 };
-use vehicle_bridge::VehicleBridge;
 use zenoh::prelude::sync::*;
 
 /// Command line options
@@ -46,7 +46,7 @@ fn main() -> Result<(), Error> {
 
     let client = Client::connect(&carla_address, carla_port, None);
     let world = client.world();
-    let mut bridge_list: HashMap<ActorId, VehicleBridge> = HashMap::new();
+    let mut bridge_list: HashMap<ActorId, Box<dyn ActorBridge>> = HashMap::new();
 
     let mut last_time = Instant::now();
     let mut clock = Clock::create(ClockType::RosTime)?;
@@ -67,38 +67,14 @@ fn main() -> Result<(), Error> {
             let deleted_ids = &prev_actor_ids - &cur_actor_ids;
 
             for id in added_ids {
-                match actor_list.remove(&id).unwrap().into_kinds() {
-                    ActorKind::Vehicle(actor) => {
-                        let role_name = actor
-                            .attributes()
-                            .iter()
-                            .find(|attr| attr.id() == "role_name")
-                            .unwrap()
-                            .value_string();
-                        info!("Detect a vehicle {role_name}");
-                        let v_bridge = VehicleBridge::new(&z_session, role_name, actor)?;
-                        bridge_list.insert(id, v_bridge);
-                    }
-                    ActorKind::Sensor(actor) => {
-                        let sensor_type = actor.type_id();
-                        info!("Detect sensors {sensor_type}");
-                        let s_bridge = SensorBridge::new(actor, sensor_type)?;
-                    }
-                    ActorKind::TrafficLight(_) => {
-                        //info!("Detect traffic light");
-                    }
-                    ActorKind::TrafficSign(_) => {
-                        //info!("Detect traffic sign");
-                    }
-                    ActorKind::Other(_) => {
-                        //info!("Detect others");
-                    }
-                }
+                let actor = actor_list.remove(&id).unwrap();
+                let bridge = bridge::actor_bridge::create_bridge(&z_session, actor);
+                bridge_list.insert(id, bridge);
             }
 
             for id in deleted_ids {
                 let removed_vehicle = bridge_list.remove(&id).unwrap();
-                info!("Remove vehicle {}", removed_vehicle.vehicle_name());
+                //info!("Remove vehicle {}", removed_vehicle.vehicle_name());
             }
         }
 

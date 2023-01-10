@@ -1,3 +1,4 @@
+use super::actor_bridge::ActorBridge;
 use crate::error::Result;
 use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
@@ -10,7 +11,7 @@ use carla_ackermann::{
     VehicleController,
 };
 use cdr::{CdrLe, Infinite};
-use log::debug;
+use log::{debug, info};
 use r2r::{
     autoware_auto_control_msgs::msg::{
         AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
@@ -36,7 +37,14 @@ pub struct VehicleBridge<'a> {
 }
 
 impl<'a> VehicleBridge<'a> {
-    pub fn new(z_session: &'a Session, name: String, actor: Vehicle) -> Result<VehicleBridge<'a>> {
+    pub fn new(z_session: &'a Session, actor: Vehicle) -> Result<VehicleBridge<'a>> {
+        let name = actor
+            .attributes()
+            .iter()
+            .find(|attr| attr.id() == "role_name")
+            .unwrap()
+            .value_string();
+        info!("Detect a vehicle {name}");
         let physics_control = actor.physics_control();
         let controller = VehicleController::from_physics_control(&physics_control, None);
 
@@ -176,13 +184,15 @@ impl<'a> VehicleBridge<'a> {
         });
     }
 
-    pub fn step(&mut self, stamp: &Time, elapsed_sec: f64) -> Result<()> {
+    pub fn vehicle_name(&self) -> &str {
+        &self.vehicle_name
+    }
+}
+
+impl<'a> ActorBridge for VehicleBridge<'a> {
+    fn step(&mut self, stamp: &Time, elapsed_sec: f64) -> Result<()> {
         self.pub_current_velocity(stamp)?;
         self.update_carla_control(elapsed_sec);
         Ok(())
-    }
-
-    pub fn vehicle_name(&self) -> &str {
-        &self.vehicle_name
     }
 }
