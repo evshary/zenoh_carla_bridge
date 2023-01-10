@@ -1,28 +1,21 @@
 use super::actor_bridge::ActorBridge;
 use crate::error::Result;
-use carla::{
-    client::{ActorKind, Client, TrafficLight},
-    prelude::*,
-    rpc::ActorId,
-};
-use log::info;
+use carla::client::TrafficLight;
 use r2r::builtin_interfaces::msg::Time;
-use zenoh::{
-    buffers::reader::HasReader, prelude::sync::*, publication::Publisher, subscriber::Subscriber,
-};
+use zenoh::prelude::sync::*;
 
 pub struct TrafficLightBridge {
-    actor: TrafficLight,
+    _actor: TrafficLight,
 }
 
 impl TrafficLightBridge {
-    pub fn new(z_session: &Session, actor: TrafficLight) -> Result<TrafficLightBridge> {
-        Ok(TrafficLightBridge { actor })
+    pub fn new(_z_session: &Session, _actor: TrafficLight) -> Result<TrafficLightBridge> {
+        Ok(TrafficLightBridge { _actor })
     }
 }
 
 impl ActorBridge for TrafficLightBridge {
-    fn step(&mut self, stamp: &Time, elapsed_sec: f64) -> Result<()> {
+    fn step(&mut self, _stamp: &Time, _elapsed_sec: f64) -> Result<()> {
         Ok(())
     }
 }

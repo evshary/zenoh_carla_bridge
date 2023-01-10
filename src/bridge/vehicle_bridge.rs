@@ -196,3 +196,9 @@ impl<'a> ActorBridge for VehicleBridge<'a> {
         Ok(())
     }
 }
+
+impl<'a> Drop for VehicleBridge<'a> {
+    fn drop(&mut self) {
+        info!("Remove vehicle {}", self.vehicle_name());
+    }
+}

@@ -4,15 +4,9 @@ use super::trafficlight_bridge::TrafficLightBridge;
 use super::trafficsign_bridge::TrafficSignBridge;
 use super::vehicle_bridge::VehicleBridge;
 use crate::error::Result;
-use carla::{
-    client::{Actor, ActorKind, Client, Sensor},
-    prelude::*,
-    rpc::ActorId,
-};
+use carla::client::{Actor, ActorKind};
 use r2r::builtin_interfaces::msg::Time;
-use zenoh::{
-    buffers::reader::HasReader, prelude::sync::*, publication::Publisher, subscriber::Subscriber,
-};
+use zenoh::prelude::sync::*;
 
 pub trait ActorBridge {
     fn step(&mut self, stamp: &Time, elapsed_sec: f64) -> Result<()>;
@@ -34,5 +28,4 @@ pub fn create_bridge<'a: 'b, 'b>(
         }
         ActorKind::Other(other) => Box::new(OtherActorBridge::new(&z_session, other).unwrap()),
     }
-    //Box::new(VehicleBridge::new(z_session, actor.into_kinds().try_into_vehicle().unwrap()).unwrap())
 }

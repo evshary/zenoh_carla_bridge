@@ -3,13 +3,7 @@ mod error;
 
 use anyhow::Result;
 use bridge::actor_bridge::ActorBridge;
-use bridge::sensor_bridge::SensorBridge;
-use bridge::vehicle_bridge::VehicleBridge;
-use carla::{
-    client::{ActorKind, Client},
-    prelude::*,
-    rpc::ActorId,
-};
+use carla::{client::Client, prelude::*, rpc::ActorId};
 use clap::Parser;
 use error::Error;
 use log::info;
@@ -73,8 +67,7 @@ fn main() -> Result<(), Error> {
             }
 
             for id in deleted_ids {
-                let removed_vehicle = bridge_list.remove(&id).unwrap();
-                //info!("Remove vehicle {}", removed_vehicle.vehicle_name());
+                bridge_list.remove(&id).unwrap();
             }
         }
 

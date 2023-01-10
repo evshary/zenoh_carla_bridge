@@ -1,31 +1,28 @@
 use super::actor_bridge::ActorBridge;
 use crate::error::Result;
-use carla::{
-    client::{ActorKind, Client, Sensor},
-    prelude::*,
-    rpc::ActorId,
-};
+use carla::{client::Sensor, prelude::*};
 use log::info;
 use r2r::builtin_interfaces::msg::Time;
-use zenoh::{
-    buffers::reader::HasReader, prelude::sync::*, publication::Publisher, subscriber::Subscriber,
-};
+use zenoh::prelude::sync::*;
 
 pub struct SensorBridge {
-    sensor_type: String,
-    actor: Sensor,
+    _sensor_type: String,
+    _actor: Sensor,
 }
 
 impl SensorBridge {
-    pub fn new(z_session: &Session, actor: Sensor) -> Result<SensorBridge> {
+    pub fn new(_z_session: &Session, actor: Sensor) -> Result<SensorBridge> {
         let sensor_type = actor.type_id();
         info!("Detect sensors {sensor_type}");
-        Ok(SensorBridge { sensor_type, actor })
+        Ok(SensorBridge {
+            _sensor_type: sensor_type,
+            _actor: actor,
+        })
     }
 }
 
 impl ActorBridge for SensorBridge {
-    fn step(&mut self, stamp: &Time, elapsed_sec: f64) -> Result<()> {
+    fn step(&mut self, _stamp: &Time, _elapsed_sec: f64) -> Result<()> {
         Ok(())
     }
 }
