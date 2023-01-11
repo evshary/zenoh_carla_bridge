@@ -38,18 +38,18 @@ pub struct VehicleBridge<'a> {
 
 impl<'a> VehicleBridge<'a> {
     pub fn new(z_session: &'a Session, actor: Vehicle) -> Result<VehicleBridge<'a>> {
-        let name = actor
+        let vehicle_name = actor
             .attributes()
             .iter()
-            .find(|attr| attr.id() == "role_name")
+            .find(|attr| attr.id() == "role_vehicle_name")
             .unwrap()
             .value_string();
-        info!("Detect a vehicle {name}");
+        info!("Detect a vehicle {vehicle_name}");
         let physics_control = actor.physics_control();
         let controller = VehicleController::from_physics_control(&physics_control, None);
 
         let publisher_velocity = z_session
-            .declare_publisher(format!("{name}/rt/vehicle/status/velocity_status"))
+            .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/velocity_status"))
             .res()?;
         let speed = Arc::new(AtomicF32::new(0.0));
 
@@ -58,7 +58,7 @@ impl<'a> VehicleBridge<'a> {
             Arc::new(ArcSwap::from_pointee(AckermannControlCommand::default()));
         let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
-            .declare_subscriber(format!("{name}/rt/external/selected/control_cmd"))
+            .declare_subscriber(format!("{vehicle_name}/rt/external/selected/control_cmd"))
             .callback_mut(move |sample| {
                 let result: Result<AckermannControlCommand, _> =
                     cdr::deserialize_from(sample.payload.reader(), cdr::size::Infinite);
@@ -69,20 +69,20 @@ impl<'a> VehicleBridge<'a> {
             })
             .res()?;
         let _subscriber_gate_mode = z_session
-            .declare_subscriber(format!("{name}/rt/control/gate_mode_cmd"))
+            .declare_subscriber(format!("{vehicle_name}/rt/control/gate_mode_cmd"))
             .callback_mut(move |_| {
                 // TODO
             })
             .res()?;
         let subscriber_gear_cmd = z_session
-            .declare_subscriber(format!("{name}/rt/external/selected/gear_cmd"))
+            .declare_subscriber(format!("{vehicle_name}/rt/external/selected/gear_cmd"))
             .callback_mut(move |_sample| {
                 // TODO: We don't this now, since reverse will be calculated while subscribing control_cmd
             })
             .res()?;
 
         Ok(VehicleBridge {
-            vehicle_name: name,
+            vehicle_name,
             actor,
             _subscriber_control_cmd: subscriber_control_cmd,
             _subscriber_gear_cmd: subscriber_gear_cmd,
