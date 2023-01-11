@@ -1,6 +1,6 @@
 use super::actor_bridge::ActorBridge;
 use crate::error::Result;
-use carla::{carla_sys::carla::sensor::data::LidarMeasurement, client::Sensor, prelude::*};
+use carla::{client::Sensor, prelude::*, sensor::data::LidarMeasurement};
 use log::info;
 use r2r::builtin_interfaces::msg::Time;
 use zenoh::prelude::sync::*;
@@ -15,8 +15,8 @@ pub enum SensorType {
 }
 
 pub struct SensorBridge {
-    vehicle_name: String,
-    sensor_type: SensorType,
+    _vehicle_name: String,
+    _sensor_type: SensorType,
     _actor: Sensor,
 }
 
@@ -35,7 +35,7 @@ impl SensorBridge {
         let sensor_type = match sensor_type_id.as_str() {
             "sensor.camera.rgb" => {
                 actor.listen(|data| {
-                    //lidar_callback(data.try_into().unwrap());
+                    lidar_callback(data.try_into().unwrap());
                 });
                 SensorType::CameraRgb
             }
@@ -46,8 +46,8 @@ impl SensorBridge {
             _ => SensorType::NotSupport,
         };
         Ok(SensorBridge {
-            vehicle_name,
-            sensor_type,
+            _vehicle_name: vehicle_name,
+            _sensor_type: sensor_type,
             _actor: actor,
         })
     }
@@ -59,4 +59,4 @@ impl ActorBridge for SensorBridge {
     }
 }
 
-fn lidar_callback(measure: LidarMeasurement) {}
+fn lidar_callback(_measure: LidarMeasurement) {}
