@@ -3,7 +3,8 @@ use crate::error::Result;
 use carla::{client::Sensor, prelude::*, sensor::data::LidarMeasurement};
 use log::info;
 use r2r::builtin_interfaces::msg::Time;
-use zenoh::prelude::sync::*;
+use std::sync::Arc;
+use zenoh::{prelude::sync::*, publication::Publisher};
 
 pub enum SensorType {
     CameraRgb,
@@ -21,7 +22,7 @@ pub struct SensorBridge {
 }
 
 impl SensorBridge {
-    pub fn new(_z_session: &Session, actor: Sensor) -> Result<SensorBridge> {
+    pub fn new<'a>(z_session: &Session, actor: Sensor) -> Result<SensorBridge> {
         let vehicle_name = actor
             .parent()
             .unwrap()
@@ -33,13 +34,21 @@ impl SensorBridge {
         let sensor_type_id = actor.type_id();
         info!("Detect sensors {sensor_type_id} from {vehicle_name}");
         let sensor_type = match sensor_type_id.as_str() {
-            "sensor.camera.rgb" => {
-                actor.listen(|data| {
+            "sensor.camera.rgb" => SensorType::CameraRgb,
+            "sensor.lidar.ray_cast" => {
+                let z_publisher = z_session
+                    .declare_publisher(format!(
+                        "{vehicle_name}/rt/sensing/lidar/top/pointcloud_raw"
+                    ))
+                    .res()
+                    .unwrap();
+                actor.listen(move |data| {
                     lidar_callback(data.try_into().unwrap());
+                    // This line fails
+                    //z_publisher.put("Error").res().unwrap();
                 });
-                SensorType::CameraRgb
+                SensorType::LidarRayCast
             }
-            "sensor.lidar.ray_cast" => SensorType::LidarRayCast,
             "sensor.lidar.ray_cast_semantic" => SensorType::LidarRayCastSemantic,
             "sensor.other.imu" => SensorType::Imu,
             "sensor.other.collision" => SensorType::Collision,
