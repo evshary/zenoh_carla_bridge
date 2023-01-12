@@ -3,12 +3,14 @@ import random
 
 from .utils import *
 
-from .camera_manager import CameraManager
-from .radar_sensor import RadarSensor
-from .gnss_sensor import GnssSensor
-from .imu_sensor import IMUSensor
-from .lane_invasion_sensor import LaneInvasionSensor
-from .collision_sensor import CollisionSensor
+from .sensors import (
+    CameraManager,
+    RadarSensor,
+    GnssSensor,
+    IMUSensor,
+    LaneInvasionSensor,
+    CollisionSensor,
+)
 
 class World(object):
     def __init__(self, carla_world, hud, args):

@@ -2,7 +2,7 @@ import carla
 import weakref
 import math
 import collections
-from .utils import *
+from ..utils import *
 
 class CollisionSensor(object):
     def __init__(self, parent_actor, hud):
