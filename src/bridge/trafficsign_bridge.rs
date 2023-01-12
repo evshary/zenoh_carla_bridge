@@ -2,6 +2,7 @@ use super::actor_bridge::ActorBridge;
 use crate::error::Result;
 use carla::client::TrafficSign;
 use r2r::builtin_interfaces::msg::Time;
+use std::sync::Arc;
 use zenoh::prelude::sync::*;
 
 pub struct TrafficSignBridge {
@@ -9,7 +10,7 @@ pub struct TrafficSignBridge {
 }
 
 impl TrafficSignBridge {
-    pub fn new(_z_session: &Session, _actor: TrafficSign) -> Result<TrafficSignBridge> {
+    pub fn new(_z_session: Arc<Session>, _actor: TrafficSign) -> Result<TrafficSignBridge> {
         Ok(TrafficSignBridge { _actor })
     }
 }

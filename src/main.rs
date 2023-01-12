@@ -8,6 +8,7 @@ use clap::Parser;
 use error::Error;
 use log::info;
 use r2r::{Clock, ClockType};
+use std::sync::Arc;
 use std::{
     collections::{HashMap, HashSet},
     thread,
@@ -36,7 +37,7 @@ fn main() -> Result<(), Error> {
     } = Opts::parse();
 
     info!("Running Carla Autoware Zenoh bridge...");
-    let z_session = zenoh::open(Config::default()).res()?;
+    let z_session = Arc::new(zenoh::open(Config::default()).res()?);
 
     let client = Client::connect(&carla_address, carla_port, None);
     let world = client.world();
@@ -62,7 +63,7 @@ fn main() -> Result<(), Error> {
 
             for id in added_ids {
                 let actor = actor_list.remove(&id).unwrap();
-                let bridge = bridge::actor_bridge::create_bridge(&z_session, actor);
+                let bridge = bridge::actor_bridge::create_bridge(z_session.clone(), actor);
                 bridge_list.insert(id, bridge);
             }
 

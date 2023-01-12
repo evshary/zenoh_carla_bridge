@@ -22,7 +22,7 @@ pub struct SensorBridge {
 }
 
 impl SensorBridge {
-    pub fn new<'a>(z_session: &Session, actor: Sensor) -> Result<SensorBridge> {
+    pub fn new<'a>(z_session: Arc<Session>, actor: Sensor) -> Result<SensorBridge> {
         let vehicle_name = actor
             .parent()
             .unwrap()
@@ -43,7 +43,7 @@ impl SensorBridge {
                     .res()
                     .unwrap();
                 actor.listen(move |data| {
-                    lidar_callback(data.try_into().unwrap());
+                    lidar_callback(data.try_into().unwrap(), &z_publisher);
                     // This line fails
                     //z_publisher.put("Error").res().unwrap();
                 });
@@ -68,4 +68,4 @@ impl ActorBridge for SensorBridge {
     }
 }
 
-fn lidar_callback(_measure: LidarMeasurement) {}
+fn lidar_callback(_measure: LidarMeasurement, _publisher: &Publisher) {}

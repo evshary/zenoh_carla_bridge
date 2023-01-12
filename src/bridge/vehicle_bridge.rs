@@ -37,7 +37,7 @@ pub struct VehicleBridge<'a> {
 }
 
 impl<'a> VehicleBridge<'a> {
-    pub fn new(z_session: &'a Session, actor: Vehicle) -> Result<VehicleBridge<'a>> {
+    pub fn new(z_session: Arc<Session>, actor: Vehicle) -> Result<VehicleBridge<'a>> {
         let vehicle_name = actor
             .attributes()
             .iter()
