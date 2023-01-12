@@ -21,7 +21,8 @@ cargo build
 * Terminal2: Run manual control agent
 
 ```shell
-python3 PythonAPI/examples/manual_control.py --rolename "v1"
+cd carla_agent/
+poetry run python3 main.py --rolename "v1"
 ```
 
 * Terminal3: Run bridge DDS
@@ -34,7 +35,7 @@ python3 PythonAPI/examples/manual_control.py --rolename "v1"
 
 ```shell
 source /path/to/autoware/install/setup.bash
-cargo run
+RUST_LOG=c=info cargo run
 ```
 
 * Terminal5: Run ROS package to control vehicle

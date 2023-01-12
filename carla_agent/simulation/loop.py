@@ -1,8 +1,3 @@
-from __future__ import print_function
-
-# ==============================================================================
-# -- imports -------------------------------------------------------------------
-# ==============================================================================
 import carla
 import pygame
 
@@ -63,7 +58,6 @@ def game_loop(args, doc):
             pygame.display.flip()
 
     finally:
-
         if original_settings:
             sim_world.apply_settings(original_settings)
 
