@@ -1,5 +1,7 @@
 mod bridge;
 mod error;
+mod types;
+mod utils;
 
 use anyhow::Result;
 use bridge::actor_bridge::ActorBridge;
