@@ -41,7 +41,7 @@ impl<'a> VehicleBridge<'a> {
         let vehicle_name = actor
             .attributes()
             .iter()
-            .find(|attr| attr.id() == "role_vehicle_name")
+            .find(|attr| attr.id() == "role_name")
             .unwrap()
             .value_string();
         info!("Detect a vehicle {vehicle_name}");
