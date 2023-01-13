@@ -7,14 +7,15 @@ use carla::{
     geom::Location,
     prelude::*,
     sensor::data::{
-        LidarDetection, LidarMeasurement, SemanticLidarDetection, SemanticLidarMeasurement,
+        Color, Image as CarlaImage, LidarDetection, LidarMeasurement, SemanticLidarDetection,
+        SemanticLidarMeasurement,
     },
 };
 use cdr::{CdrLe, Infinite};
 use log::info;
 use r2r::{
     builtin_interfaces::msg::Time,
-    sensor_msgs::msg::{PointCloud2, PointField},
+    sensor_msgs::msg::{Image as RosImage, PointCloud2, PointField},
     std_msgs::msg::Header,
 };
 use std::sync::Arc;
@@ -27,6 +28,7 @@ pub enum SensorType {
     Imu,
     Collision,
     NotSupport,
+    GodView,
 }
 
 pub struct SensorBridge {
@@ -47,39 +49,62 @@ impl SensorBridge {
             .value_string();
         let sensor_type_id = actor.type_id();
         info!("Detect sensors {sensor_type_id} from {vehicle_name}");
+        let role_name = actor
+            .attributes()
+            .iter()
+            .find(|attr| attr.id() == "role_name")
+            .unwrap()
+            .value_string();
 
-        let sensor_type = match sensor_type_id.as_str() {
-            "sensor.camera.rgb" => SensorType::CameraRgb,
-            "sensor.lidar.ray_cast" => {
-                let pcd_publisher = z_session
-                    .declare_publisher(format!(
-                        "{vehicle_name}/rt/sensing/lidar/top/pointcloud_raw"
-                    ))
-                    .res()
-                    .unwrap();
-                actor.listen(move |data| {
-                    let header = utils::create_ros_header().unwrap();
-                    lidar_callback(header, data.try_into().unwrap(), &pcd_publisher);
-                });
-                SensorType::LidarRayCast
+        let sensor_type = if role_name == "godview" {
+            SensorType::GodView
+        } else {
+            match sensor_type_id.as_str() {
+                "sensor.camera.rgb" => {
+                    let image_publisher = z_session
+                        .declare_publisher(format!(
+                            "{vehicle_name}/rt/sensing/camera/traffic_light/image_raw"
+                        ))
+                        .res()
+                        .unwrap();
+                    actor.listen(move |data| {
+                        let header = utils::create_ros_header().unwrap();
+                        camera_callback(header, data.try_into().unwrap(), &image_publisher);
+                    });
+                    SensorType::CameraRgb
+                }
+                "sensor.lidar.ray_cast" => {
+                    let pcd_publisher = z_session
+                        .declare_publisher(format!(
+                            "{vehicle_name}/rt/sensing/lidar/top/pointcloud_raw"
+                        ))
+                        .res()
+                        .unwrap();
+                    actor.listen(move |data| {
+                        let header = utils::create_ros_header().unwrap();
+                        lidar_callback(header, data.try_into().unwrap(), &pcd_publisher);
+                    });
+                    SensorType::LidarRayCast
+                }
+                "sensor.lidar.ray_cast_semantic" => {
+                    let pcd_publisher = z_session
+                        .declare_publisher(format!(
+                            "{vehicle_name}/rt/sensing/lidar/top/pointcloud_raw"
+                        ))
+                        .res()
+                        .unwrap();
+                    actor.listen(move |data| {
+                        let header = utils::create_ros_header().unwrap();
+                        senmatic_lidar_callback(header, data.try_into().unwrap(), &pcd_publisher);
+                    });
+                    SensorType::LidarRayCastSemantic
+                }
+                "sensor.other.imu" => SensorType::Imu,
+                "sensor.other.collision" => SensorType::Collision,
+                _ => SensorType::NotSupport,
             }
-            "sensor.lidar.ray_cast_semantic" => {
-                let pcd_publisher = z_session
-                    .declare_publisher(format!(
-                        "{vehicle_name}/rt/sensing/lidar/top/pointcloud_raw"
-                    ))
-                    .res()
-                    .unwrap();
-                actor.listen(move |data| {
-                    let header = utils::create_ros_header().unwrap();
-                    senmatic_lidar_callback(header, data.try_into().unwrap(), &pcd_publisher);
-                });
-                SensorType::LidarRayCastSemantic
-            }
-            "sensor.other.imu" => SensorType::Imu,
-            "sensor.other.collision" => SensorType::Collision,
-            _ => SensorType::NotSupport,
         };
+
         Ok(SensorBridge {
             _vehicle_name: vehicle_name,
             _sensor_type: sensor_type,
@@ -92,6 +117,32 @@ impl ActorBridge for SensorBridge {
     fn step(&mut self, _stamp: &Time, _elapsed_sec: f64) -> Result<()> {
         Ok(())
     }
+}
+
+fn camera_callback(header: Header, image: CarlaImage, image_publisher: &Publisher) {
+    let image_data = image.as_slice();
+    if image_data.is_empty() {
+        return;
+    }
+    let width = image.width();
+    let height = image.height();
+    let data: Vec<_> = image_data
+        .iter()
+        .flat_map(|&Color { b, g, r, a }| [b, g, r, a])
+        .collect();
+
+    let image_msg = RosImage {
+        header,
+        height: height as u32,
+        width: width as u32,
+        encoding: "bgra8".to_string(),
+        is_bigendian: utils::is_bigendian().into(),
+        step: (width * 4) as u32,
+        data,
+    };
+
+    let encoded = cdr::serialize::<_, _, CdrLe>(&image_msg, Infinite).unwrap();
+    image_publisher.put(encoded).res().unwrap();
 }
 
 fn lidar_callback(header: Header, measure: LidarMeasurement, pcd_publisher: &Publisher) {

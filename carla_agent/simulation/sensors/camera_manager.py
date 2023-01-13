@@ -72,7 +72,7 @@ class CameraManager(object):
                     bp.set_attribute(attr_name, attr_value)
                     if attr_name == 'range':
                         self.lidar_range = float(attr_value)
-
+            bp.set_attribute('role_name', 'godview')
             item.append(bp)
         self.index = None
 
