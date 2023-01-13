@@ -5,3 +5,4 @@ from .imu import IMUSensor
 from .lane_invasion import LaneInvasionSensor
 from .lidar import LidarSensor
 from .radar import RadarSensor
+from .rgb_camera import RgbCamera
