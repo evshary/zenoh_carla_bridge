@@ -1,6 +1,7 @@
 import carla
 import pygame
 
+from . import config
 from .world import World
 from .keyboard import KeyboardControl
 from .ui import HUD
@@ -15,7 +16,8 @@ def game_loop(args, doc):
         client = carla.Client(args.host, args.port)
         client.set_timeout(20.0)
 
-        sim_world = client.get_world()
+        sim_world = client.load_world(config.SIM_WORLD)
+        #sim_world = client.get_world()
         if args.sync:
             original_settings = sim_world.get_settings()
             settings = sim_world.get_settings()
