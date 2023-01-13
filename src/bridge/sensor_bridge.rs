@@ -6,7 +6,9 @@ use carla::{
     client::Sensor,
     geom::Location,
     prelude::*,
-    sensor::data::{LidarDetection, LidarMeasurement},
+    sensor::data::{
+        LidarDetection, LidarMeasurement, SemanticLidarDetection, SemanticLidarMeasurement,
+    },
 };
 use cdr::{CdrLe, Infinite};
 use log::info;
@@ -61,7 +63,19 @@ impl SensorBridge {
                 });
                 SensorType::LidarRayCast
             }
-            "sensor.lidar.ray_cast_semantic" => SensorType::LidarRayCastSemantic,
+            "sensor.lidar.ray_cast_semantic" => {
+                let pcd_publisher = z_session
+                    .declare_publisher(format!(
+                        "{vehicle_name}/rt/sensing/lidar/top/pointcloud_raw"
+                    ))
+                    .res()
+                    .unwrap();
+                actor.listen(move |data| {
+                    let header = utils::create_ros_header().unwrap();
+                    senmatic_lidar_callback(header, data.try_into().unwrap(), &pcd_publisher);
+                });
+                SensorType::LidarRayCastSemantic
+            }
             "sensor.other.imu" => SensorType::Imu,
             "sensor.other.collision" => SensorType::Collision,
             _ => SensorType::NotSupport,
@@ -119,6 +133,91 @@ fn lidar_callback(header: Header, measure: LidarMeasurement, pcd_publisher: &Pub
         PointField {
             name: "intensity".to_string(),
             offset: 12,
+            datatype: PointFieldType::FLOAT32 as u8,
+            count: 1,
+        },
+    ];
+    let lidar_msg = PointCloud2 {
+        header,
+        height: 1,
+        width: lidar_data.len() as u32,
+        fields,
+        is_bigendian: utils::is_bigendian(),
+        point_step,
+        row_step,
+        data,
+        is_dense: true,
+    };
+    let encoded = cdr::serialize::<_, _, CdrLe>(&lidar_msg, Infinite).unwrap();
+    pcd_publisher.put(encoded).res().unwrap();
+}
+
+fn senmatic_lidar_callback(
+    header: Header,
+    measure: SemanticLidarMeasurement,
+    pcd_publisher: &Publisher,
+) {
+    let lidar_data = measure.as_slice();
+    if lidar_data.is_empty() {
+        return;
+    }
+    let point_step = std::mem::size_of_val(&lidar_data[0]) as u32;
+    let row_step = lidar_data.len() as u32;
+    let data: Vec<_> = lidar_data
+        .iter()
+        .flat_map(
+            |&SemanticLidarDetection {
+                 point: Location { x, y, z },
+                 cos_inc_angle,
+                 object_idx,
+                 object_tag,
+             }| {
+                [
+                    x.to_ne_bytes(),
+                    y.to_ne_bytes(),
+                    z.to_ne_bytes(),
+                    cos_inc_angle.to_ne_bytes(),
+                    object_idx.to_ne_bytes(),
+                    object_tag.to_ne_bytes(),
+                ]
+            },
+        )
+        .flatten()
+        .collect();
+    let fields = vec![
+        PointField {
+            name: "x".to_string(),
+            offset: 0,
+            datatype: PointFieldType::FLOAT32 as u8,
+            count: 1,
+        },
+        PointField {
+            name: "y".to_string(),
+            offset: 4,
+            datatype: PointFieldType::FLOAT32 as u8,
+            count: 1,
+        },
+        PointField {
+            name: "z".to_string(),
+            offset: 8,
+            datatype: PointFieldType::FLOAT32 as u8,
+            count: 1,
+        },
+        PointField {
+            name: "cos_inc_angle".to_string(),
+            offset: 12,
+            datatype: PointFieldType::FLOAT32 as u8,
+            count: 1,
+        },
+        PointField {
+            name: "object_idx".to_string(),
+            offset: 16,
+            datatype: PointFieldType::FLOAT32 as u8,
+            count: 1,
+        },
+        PointField {
+            name: "object_tag".to_string(),
+            offset: 20,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
