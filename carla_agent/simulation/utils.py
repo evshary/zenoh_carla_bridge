@@ -1,5 +1,6 @@
 import re
 import carla
+from carla import Vector3D, Actor
 
 def find_weather_presets():
     rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
@@ -35,3 +36,8 @@ def get_actor_blueprints(world, filter, generation):
     except:
         print("   Warning! Actor Generation is not valid. No actor will be spawned.")
         return []
+
+def get_actor_bounding_extent(actor: Actor) -> Vector3D:
+    orig_extent = actor.bounding_box.extent
+    new_extent = Vector3D(orig_extent.x + 0.5, orig_extent.y + 0.5, orig_extent.z + 0.5)
+    return new_extent
