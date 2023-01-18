@@ -1,7 +1,5 @@
 use super::actor_bridge::ActorBridge;
-use crate::error::Result;
-use crate::types::PointFieldType;
-use crate::utils;
+use crate::{error::Result, types::PointFieldType, utils};
 use carla::{
     client::Sensor,
     geom::Location,

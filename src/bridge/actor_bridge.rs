@@ -1,8 +1,8 @@
-use super::other_bridge::OtherActorBridge;
-use super::sensor_bridge::SensorBridge;
-use super::trafficlight_bridge::TrafficLightBridge;
-use super::trafficsign_bridge::TrafficSignBridge;
-use super::vehicle_bridge::VehicleBridge;
+use super::{
+    other_bridge::OtherActorBridge, sensor_bridge::SensorBridge,
+    trafficlight_bridge::TrafficLightBridge, trafficsign_bridge::TrafficSignBridge,
+    vehicle_bridge::VehicleBridge,
+};
 use crate::error::Result;
 use carla::client::{Actor, ActorKind};
 use r2r::builtin_interfaces::msg::Time;

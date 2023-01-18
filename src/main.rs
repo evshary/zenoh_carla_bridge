@@ -10,9 +10,9 @@ use clap::Parser;
 use error::Error;
 use log::info;
 use r2r::{Clock, ClockType};
-use std::sync::Arc;
 use std::{
     collections::{HashMap, HashSet},
+    sync::Arc,
     thread,
     time::{Duration, Instant},
 };
