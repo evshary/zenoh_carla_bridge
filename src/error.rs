@@ -10,4 +10,7 @@ pub enum Error {
 
     #[error("{0}")]
     Other(#[from] Box<dyn std::error::Error + Sync + Send + 'static>),
+
+    #[error("The sensor with ID {sensor_id} is ownerless.")]
+    OwnerlessSensor { sensor_id: u32 },
 }

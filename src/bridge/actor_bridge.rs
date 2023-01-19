@@ -1,8 +1,8 @@
-use super::other_bridge::OtherActorBridge;
-use super::sensor_bridge::SensorBridge;
-use super::trafficlight_bridge::TrafficLightBridge;
-use super::trafficsign_bridge::TrafficSignBridge;
-use super::vehicle_bridge::VehicleBridge;
+use super::{
+    other_bridge::OtherActorBridge, sensor_bridge::SensorBridge,
+    trafficlight_bridge::TrafficLightBridge, trafficsign_bridge::TrafficSignBridge,
+    vehicle_bridge::VehicleBridge,
+};
 use crate::error::Result;
 use carla::client::{Actor, ActorKind};
 use r2r::builtin_interfaces::msg::Time;
@@ -14,16 +14,16 @@ pub trait ActorBridge {
 }
 
 // z_session should outlive Box<>
-pub fn create_bridge(z_session: Arc<Session>, actor: Actor) -> Box<dyn ActorBridge> {
-    match actor.into_kinds() {
-        ActorKind::Vehicle(vehicle) => Box::new(VehicleBridge::new(z_session, vehicle).unwrap()),
-        ActorKind::Sensor(sensor) => Box::new(SensorBridge::new(z_session, sensor).unwrap()),
+pub fn create_bridge(z_session: Arc<Session>, actor: Actor) -> Result<Box<dyn ActorBridge>> {
+    Ok(match actor.into_kinds() {
+        ActorKind::Vehicle(vehicle) => Box::new(VehicleBridge::new(z_session, vehicle)?),
+        ActorKind::Sensor(sensor) => Box::new(SensorBridge::new(z_session, sensor)?),
         ActorKind::TrafficLight(traffic_light) => {
-            Box::new(TrafficLightBridge::new(z_session, traffic_light).unwrap())
+            Box::new(TrafficLightBridge::new(z_session, traffic_light)?)
         }
         ActorKind::TrafficSign(traffic_sign) => {
-            Box::new(TrafficSignBridge::new(z_session, traffic_sign).unwrap())
+            Box::new(TrafficSignBridge::new(z_session, traffic_sign)?)
         }
-        ActorKind::Other(other) => Box::new(OtherActorBridge::new(z_session, other).unwrap()),
-    }
+        ActorKind::Other(other) => Box::new(OtherActorBridge::new(z_session, other)?),
+    })
 }
