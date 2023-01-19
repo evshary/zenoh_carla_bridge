@@ -9,7 +9,7 @@ except ImportError:
     raise RuntimeError('cannot import numpy, make sure numpy package is installed')
 
 class CameraManager(object):
-    def __init__(self, parent_actor, hud, gamma_correction):
+    def __init__(self, parent_actor, hud, gamma_correction, sensor_name = 'godview'):
         self.sensor = None
         self.surface = None
         self._parent = parent_actor
@@ -72,7 +72,7 @@ class CameraManager(object):
                     bp.set_attribute(attr_name, attr_value)
                     if attr_name == 'range':
                         self.lidar_range = float(attr_value)
-            bp.set_attribute('role_name', 'godview')
+            bp.set_attribute('role_name', sensor_name)
             item.append(bp)
         self.index = None
 

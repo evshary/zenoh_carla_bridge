@@ -5,7 +5,7 @@ from ..utils import get_actor_bounding_extent
 class LidarSensor(object):
     callback = None
 
-    def __init__(self, actor: Actor, range: float = 50):
+    def __init__(self, actor: Actor, range: float = 50, sensor_name = 'lidar'):
         extent = get_actor_bounding_extent(actor)
         bound_x = extent.x
         bound_y = extent.y
@@ -18,6 +18,7 @@ class LidarSensor(object):
         bp.set_attribute("points_per_second", "600000")
         bp.set_attribute("rotation_frequency", "10")
         bp.set_attribute("range", str(range))
+        bp.set_attribute('role_name', sensor_name)
         sensor = world.spawn_actor(
             bp,
             trans,

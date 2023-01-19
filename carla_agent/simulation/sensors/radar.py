@@ -3,7 +3,7 @@ import weakref
 import math
 
 class RadarSensor(object):
-    def __init__(self, parent_actor):
+    def __init__(self, parent_actor, sensor_name = 'radar'):
         self.sensor = None
         self._parent = parent_actor
         bound_x = 0.5 + self._parent.bounding_box.extent.x
@@ -16,6 +16,7 @@ class RadarSensor(object):
         bp = world.get_blueprint_library().find('sensor.other.radar')
         bp.set_attribute('horizontal_fov', str(35))
         bp.set_attribute('vertical_fov', str(20))
+        bp.set_attribute('role_name', sensor_name)
         self.sensor = world.spawn_actor(
             bp,
             carla.Transform(

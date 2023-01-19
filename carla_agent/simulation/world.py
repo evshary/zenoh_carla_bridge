@@ -112,8 +112,8 @@ class World(object):
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
         self.gnss_sensor = GnssSensor(self.player)
         self.imu_sensor = IMUSensor(self.player)
-        self.lidar_sensor = LidarSensor(self.player)
-        self.rgb_camera = RgbCamera(self.player)
+        self.lidar_sensor = LidarSensor(self.player, sensor_name='top')
+        self.rgb_camera = RgbCamera(self.player, sensor_name='traffic_light')
         self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
         self.camera_manager.transform_index = cam_pos_index
         self.camera_manager.set_sensor(cam_index, notify=False)

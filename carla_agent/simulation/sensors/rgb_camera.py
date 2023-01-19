@@ -13,7 +13,7 @@ import numpy as np
 class RgbCamera(object):
     callback = None
 
-    def __init__(self, actor: Actor, range: float = 50):
+    def __init__(self, actor: Actor, range: float = 50, sensor_name = 'rgb_camera'):
         extent = get_actor_bounding_extent(actor)
         bound_x = extent.x
         bound_y = extent.y
@@ -22,6 +22,7 @@ class RgbCamera(object):
         world = actor.get_world()
         trans = Transform(Location(x=+0.8 * bound_x, y=+0.0 * bound_y, z=1.3 * bound_z))
         bp = world.get_blueprint_library().find("sensor.camera.rgb")
+        bp.set_attribute('role_name', sensor_name)
         sensor = world.spawn_actor(
             bp,
             trans,
