@@ -8,7 +8,7 @@ use bridge::actor_bridge::ActorBridge;
 use carla::{client::Client, prelude::*, rpc::ActorId};
 use clap::Parser;
 use error::Error;
-use log::info;
+use log::{error, info};
 use r2r::{Clock, ClockType};
 use std::{
     collections::{HashMap, HashSet},
@@ -65,12 +65,23 @@ fn main() -> Result<(), Error> {
 
             for id in added_ids {
                 let actor = actor_list.remove(&id).unwrap();
-                let bridge = bridge::actor_bridge::create_bridge(z_session.clone(), actor);
+                let bridge = match bridge::actor_bridge::create_bridge(z_session.clone(), actor) {
+                    Ok(bridge) => bridge,
+                    Err(Error::OwnerlessSensor { sensor_id }) => {
+                        error!(
+                            "Ignore the sensor with ID {sensor_id} is not attached to any vehicle."
+                        );
+                        continue;
+                    }
+                    Err(err) => return Err(err),
+                };
                 bridge_list.insert(id, bridge);
+                info!("Actor {id} created");
             }
 
             for id in deleted_ids {
                 bridge_list.remove(&id).unwrap();
+                info!("Actor {id} deleted");
             }
         }
 

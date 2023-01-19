@@ -1,5 +1,9 @@
 use super::actor_bridge::ActorBridge;
-use crate::{error::Result, types::PointFieldType, utils};
+use crate::{
+    error::{Error, Result},
+    types::PointFieldType,
+    utils,
+};
 use carla::{
     client::Sensor,
     geom::Location,
@@ -10,15 +14,17 @@ use carla::{
     },
 };
 use cdr::{CdrLe, Infinite};
-use log::info;
+use log::{info, warn};
+use nalgebra::coordinates::XYZ;
 use r2r::{
     builtin_interfaces::msg::Time,
     sensor_msgs::msg::{Image as RosImage, PointCloud2, PointField},
     std_msgs::msg::Header,
 };
-use std::sync::Arc;
+use std::{convert::Infallible, mem, str::FromStr, sync::Arc};
 use zenoh::{prelude::sync::*, publication::Publisher};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SensorType {
     CameraRgb,
     LidarRayCast,
@@ -26,85 +32,73 @@ pub enum SensorType {
     Imu,
     Collision,
     NotSupport,
-    GodView,
+}
+
+impl FromStr for SensorType {
+    type Err = Infallible;
+
+    fn from_str(type_id: &str) -> Result<Self, Self::Err> {
+        Ok(match type_id {
+            "sensor.camera.rgb" => SensorType::CameraRgb,
+            "sensor.lidar.ray_cast" => SensorType::LidarRayCast,
+            "sensor.lidar.ray_cast_semantic" => SensorType::LidarRayCastSemantic,
+            "sensor.other.imu" => SensorType::Imu,
+            "sensor.other.collision" => SensorType::Collision,
+            _ => SensorType::NotSupport,
+        })
+    }
 }
 
 pub struct SensorBridge {
-    _vehicle_name: String,
     _sensor_type: SensorType,
     _actor: Sensor,
 }
 
 impl SensorBridge {
-    pub fn new<'a>(z_session: Arc<Session>, actor: Sensor) -> Result<SensorBridge> {
+    pub fn new(z_session: Arc<Session>, actor: Sensor) -> Result<SensorBridge> {
+        let sensor_id = actor.id();
+        let sensor_type_id = actor.type_id();
+
         let vehicle_name = actor
             .parent()
-            .unwrap()
+            .ok_or(Error::OwnerlessSensor { sensor_id })?
             .attributes()
             .iter()
             .find(|attr| attr.id() == "role_name")
-            .unwrap()
+            .expect("'role_name' attribute is missing")
             .value_string();
-        let sensor_type_id = actor.type_id();
-        info!("Detect sensors {sensor_type_id} from {vehicle_name}");
-        let role_name = actor
+        let sensor_name = actor
             .attributes()
             .iter()
             .find(|attr| attr.id() == "role_name")
-            .unwrap()
-            .value_string();
+            .map(|attr| attr.value_string())
+            .unwrap_or_else(|| generate_sensor_name(&actor));
 
-        let sensor_type = if role_name == "godview" {
-            SensorType::GodView
-        } else {
-            match sensor_type_id.as_str() {
-                "sensor.camera.rgb" => {
-                    let image_publisher = z_session
-                        .declare_publisher(format!(
-                            "{vehicle_name}/rt/sensing/camera/traffic_light/image_raw"
-                        ))
-                        .res()
-                        .unwrap();
-                    actor.listen(move |data| {
-                        let header = utils::create_ros_header().unwrap();
-                        camera_callback(header, data.try_into().unwrap(), &image_publisher);
-                    });
-                    SensorType::CameraRgb
-                }
-                "sensor.lidar.ray_cast" => {
-                    let pcd_publisher = z_session
-                        .declare_publisher(format!(
-                            "{vehicle_name}/rt/sensing/lidar/top/pointcloud_raw"
-                        ))
-                        .res()
-                        .unwrap();
-                    actor.listen(move |data| {
-                        let header = utils::create_ros_header().unwrap();
-                        lidar_callback(header, data.try_into().unwrap(), &pcd_publisher);
-                    });
-                    SensorType::LidarRayCast
-                }
-                "sensor.lidar.ray_cast_semantic" => {
-                    let pcd_publisher = z_session
-                        .declare_publisher(format!(
-                            "{vehicle_name}/rt/sensing/lidar/top/pointcloud_raw"
-                        ))
-                        .res()
-                        .unwrap();
-                    actor.listen(move |data| {
-                        let header = utils::create_ros_header().unwrap();
-                        senmatic_lidar_callback(header, data.try_into().unwrap(), &pcd_publisher);
-                    });
-                    SensorType::LidarRayCastSemantic
-                }
-                "sensor.other.imu" => SensorType::Imu,
-                "sensor.other.collision" => SensorType::Collision,
-                _ => SensorType::NotSupport,
+        info!("Detected a sensor '{sensor_name}' on '{vehicle_name}'");
+        let sensor_type: SensorType = sensor_type_id.parse().unwrap();
+
+        match sensor_type {
+            SensorType::CameraRgb => {
+                register_camera_rgb(z_session, &actor, &vehicle_name, &sensor_name)?;
             }
-        };
+            SensorType::LidarRayCast => {
+                register_lidar_raycast(z_session, &actor, &vehicle_name, &sensor_name)?;
+            }
+            SensorType::LidarRayCastSemantic => {
+                register_lidar_raycast_semantic(z_session, &actor, &vehicle_name, &sensor_name)?;
+            }
+            SensorType::Imu => {
+                warn!("IMU sensor is not supported yet");
+            }
+            SensorType::Collision => {
+                warn!("Collision sensor is not supported yet");
+            }
+            SensorType::NotSupport => {
+                warn!("Unsupported sensor type '{sensor_type_id}'");
+            }
+        }
 
         Ok(SensorBridge {
-            _vehicle_name: vehicle_name,
             _sensor_type: sensor_type,
             _actor: actor,
         })
@@ -117,10 +111,59 @@ impl ActorBridge for SensorBridge {
     }
 }
 
-fn camera_callback(header: Header, image: CarlaImage, image_publisher: &Publisher) {
+fn register_camera_rgb(
+    z_session: Arc<Session>,
+    actor: &Sensor,
+    vehicle_name: &str,
+    sensor_name: &str,
+) -> Result<()> {
+    let key = format!("{vehicle_name}/rt/sensing/camera/{sensor_name}/image_raw");
+
+    let image_publisher = z_session.declare_publisher(key).res()?;
+    actor.listen(move |data| {
+        let header = utils::create_ros_header().unwrap();
+        camera_callback(header, data.try_into().unwrap(), &image_publisher).unwrap();
+    });
+
+    Ok(())
+}
+
+fn register_lidar_raycast(
+    z_session: Arc<Session>,
+    actor: &Sensor,
+    vehicle_name: &str,
+    sensor_name: &str,
+) -> Result<()> {
+    let key = format!("{vehicle_name}/rt/sensing/lidar/{sensor_name}/pointcloud_raw");
+    let pcd_publisher = z_session.declare_publisher(key).res()?;
+    actor.listen(move |data| {
+        let header = utils::create_ros_header().unwrap();
+        lidar_callback(header, data.try_into().unwrap(), &pcd_publisher).unwrap();
+    });
+
+    Ok(())
+}
+
+fn register_lidar_raycast_semantic(
+    z_session: Arc<Session>,
+    actor: &Sensor,
+    vehicle_name: &str,
+    sensor_name: &str,
+) -> Result<()> {
+    let key = format!("{vehicle_name}/rt/sensing/lidar/{sensor_name}/pointcloud_raw");
+    let pcd_publisher = z_session.declare_publisher(key).res()?;
+    actor.listen(move |data| {
+        let header = utils::create_ros_header().unwrap();
+        senmatic_lidar_callback(header, data.try_into().unwrap(), &pcd_publisher).unwrap();
+    });
+
+    Ok(())
+}
+
+fn camera_callback(header: Header, image: CarlaImage, image_publisher: &Publisher) -> Result<()> {
     let image_data = image.as_slice();
     if image_data.is_empty() {
-        return;
+        return Ok(());
     }
     let width = image.width();
     let height = image.height();
@@ -139,25 +182,31 @@ fn camera_callback(header: Header, image: CarlaImage, image_publisher: &Publishe
         data,
     };
 
-    let encoded = cdr::serialize::<_, _, CdrLe>(&image_msg, Infinite).unwrap();
-    image_publisher.put(encoded).res().unwrap();
+    let encoded = cdr::serialize::<_, _, CdrLe>(&image_msg, Infinite)?;
+    image_publisher.put(encoded).res()?;
+    Ok(())
 }
 
-fn lidar_callback(header: Header, measure: LidarMeasurement, pcd_publisher: &Publisher) {
+fn lidar_callback(
+    header: Header,
+    measure: LidarMeasurement,
+    pcd_publisher: &Publisher,
+) -> Result<()> {
     let lidar_data = measure.as_slice();
     if lidar_data.is_empty() {
-        return;
+        return Ok(());
     }
-    let point_step = std::mem::size_of_val(&lidar_data[0]) as u32;
+    let point_step = mem::size_of_val(&lidar_data[0]) as u32;
     let row_step = lidar_data.len() as u32;
     let data: Vec<_> = lidar_data
         .iter()
-        .flat_map(
-            |&LidarDetection {
-                 point: Location { x, y, z },
-                 intensity,
-             }| { [x, y, z, intensity] },
-        )
+        .flat_map(|det| {
+            let LidarDetection {
+                point: Location { x, y, z },
+                intensity,
+            } = *det;
+            [x, y, z, intensity]
+        })
         .flat_map(|elem| elem.to_ne_bytes())
         .collect();
     let fields = vec![
@@ -197,40 +246,41 @@ fn lidar_callback(header: Header, measure: LidarMeasurement, pcd_publisher: &Pub
         data,
         is_dense: true,
     };
-    let encoded = cdr::serialize::<_, _, CdrLe>(&lidar_msg, Infinite).unwrap();
-    pcd_publisher.put(encoded).res().unwrap();
+    let encoded = cdr::serialize::<_, _, CdrLe>(&lidar_msg, Infinite)?;
+    pcd_publisher.put(encoded).res()?;
+    Ok(())
 }
 
 fn senmatic_lidar_callback(
     header: Header,
     measure: SemanticLidarMeasurement,
     pcd_publisher: &Publisher,
-) {
+) -> Result<()> {
     let lidar_data = measure.as_slice();
     if lidar_data.is_empty() {
-        return;
+        return Ok(());
     }
-    let point_step = std::mem::size_of_val(&lidar_data[0]) as u32;
+    let point_step = mem::size_of_val(&lidar_data[0]) as u32;
     let row_step = lidar_data.len() as u32;
     let data: Vec<_> = lidar_data
         .iter()
-        .flat_map(
-            |&SemanticLidarDetection {
-                 point: Location { x, y, z },
-                 cos_inc_angle,
-                 object_idx,
-                 object_tag,
-             }| {
-                [
-                    x.to_ne_bytes(),
-                    y.to_ne_bytes(),
-                    z.to_ne_bytes(),
-                    cos_inc_angle.to_ne_bytes(),
-                    object_idx.to_ne_bytes(),
-                    object_tag.to_ne_bytes(),
-                ]
-            },
-        )
+        .flat_map(|det| {
+            let SemanticLidarDetection {
+                point: Location { x, y, z },
+                cos_inc_angle,
+                object_idx,
+                object_tag,
+            } = *det;
+
+            [
+                x.to_ne_bytes(),
+                y.to_ne_bytes(),
+                z.to_ne_bytes(),
+                cos_inc_angle.to_ne_bytes(),
+                object_idx.to_ne_bytes(),
+                object_tag.to_ne_bytes(),
+            ]
+        })
         .flatten()
         .collect();
     let fields = vec![
@@ -282,6 +332,12 @@ fn senmatic_lidar_callback(
         data,
         is_dense: true,
     };
-    let encoded = cdr::serialize::<_, _, CdrLe>(&lidar_msg, Infinite).unwrap();
-    pcd_publisher.put(encoded).res().unwrap();
+    let encoded = cdr::serialize::<_, _, CdrLe>(&lidar_msg, Infinite)?;
+    pcd_publisher.put(encoded).res()?;
+    Ok(())
+}
+
+fn generate_sensor_name(actor: &Sensor) -> String {
+    let XYZ { x, y, z } = *actor.location();
+    format!("{x}_{y}_{z}")
 }
