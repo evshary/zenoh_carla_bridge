@@ -589,6 +589,7 @@ dependencies = [
  "clap 4.1.1",
  "log",
  "nalgebra",
+ "ndarray",
  "pretty_env_logger",
  "r2r",
  "serde",

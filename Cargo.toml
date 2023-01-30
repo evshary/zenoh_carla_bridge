@@ -21,3 +21,4 @@ anyhow = { version = "1.0.68", features = ["backtrace"] }
 thiserror = "1.0.38"
 arc-swap = "1.6.0"
 nalgebra = "0.31.4"
+ndarray = "0.15.6"

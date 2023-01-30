@@ -2,23 +2,23 @@ use super::actor_bridge::ActorBridge;
 use crate::{
     error::{Error, Result},
     types::PointFieldType,
-    utils,
+    utils::{self, ToRosType},
 };
 use carla::{
     client::Sensor,
     geom::Location,
     prelude::*,
     sensor::data::{
-        Color, Image as CarlaImage, LidarDetection, LidarMeasurement, SemanticLidarDetection,
-        SemanticLidarMeasurement,
+        Color, Image as CarlaImage, ImuMeasurement, LidarDetection, LidarMeasurement,
+        SemanticLidarDetection, SemanticLidarMeasurement,
     },
 };
 use cdr::{CdrLe, Infinite};
 use log::{info, warn};
-use nalgebra::coordinates::XYZ;
+use nalgebra::{coordinates::XYZ, UnitQuaternion};
 use r2r::{
     builtin_interfaces::msg::Time,
-    sensor_msgs::msg::{Image as RosImage, PointCloud2, PointField},
+    sensor_msgs::msg::{Image as RosImage, Imu, PointCloud2, PointField},
     std_msgs::msg::Header,
 };
 use std::{convert::Infallible, mem, str::FromStr, sync::Arc};
@@ -88,7 +88,7 @@ impl SensorBridge {
                 register_lidar_raycast_semantic(z_session, &actor, &vehicle_name, &sensor_name)?;
             }
             SensorType::Imu => {
-                warn!("IMU sensor is not supported yet");
+                register_imu(z_session, &actor, &vehicle_name, &sensor_name)?;
             }
             SensorType::Collision => {
                 warn!("Collision sensor is not supported yet");
@@ -157,6 +157,21 @@ fn register_lidar_raycast_semantic(
         senmatic_lidar_callback(header, data.try_into().unwrap(), &pcd_publisher).unwrap();
     });
 
+    Ok(())
+}
+
+fn register_imu(
+    z_session: Arc<Session>,
+    actor: &Sensor,
+    vehicle_name: &str,
+    sensor_name: &str,
+) -> Result<()> {
+    let key = format!("{vehicle_name}/rt/sensing/{sensor_name}/imu_raw");
+    let imu_publisher = z_session.declare_publisher(key).res()?;
+    actor.listen(move |data| {
+        let header = utils::create_ros_header().unwrap();
+        imu_callback(header, data.try_into().unwrap(), &imu_publisher).unwrap();
+    });
     Ok(())
 }
 
@@ -334,6 +349,26 @@ fn senmatic_lidar_callback(
     };
     let encoded = cdr::serialize::<_, _, CdrLe>(&lidar_msg, Infinite)?;
     pcd_publisher.put(encoded).res()?;
+    Ok(())
+}
+
+fn imu_callback(header: Header, measure: ImuMeasurement, imu_publisher: &Publisher) -> Result<()> {
+    let accel = measure.accelerometer();
+    let compass = measure.compass();
+    let orientation = UnitQuaternion::from_euler_angles(0.0, 0.0, -compass);
+    let gyro = measure.gyroscope();
+
+    let imu_msg = Imu {
+        header,
+        orientation: orientation.to_ros_type(),
+        orientation_covariance: utils::identity_matrix(3).into_raw_vec(),
+        angular_velocity: gyro.to_ros_type(),
+        angular_velocity_covariance: utils::identity_matrix(3).into_raw_vec(),
+        linear_acceleration: accel.to_ros_type(),
+        linear_acceleration_covariance: utils::identity_matrix(3).into_raw_vec(),
+    };
+    let encoded = cdr::serialize::<_, _, CdrLe>(&imu_msg, Infinite)?;
+    imu_publisher.put(encoded).res()?;
     Ok(())
 }
 
