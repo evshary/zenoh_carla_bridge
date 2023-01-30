@@ -166,7 +166,7 @@ fn register_imu(
     vehicle_name: &str,
     sensor_name: &str,
 ) -> Result<()> {
-    let key = format!("{vehicle_name}/rt/sensing/{sensor_name}/imu_raw");
+    let key = format!("{vehicle_name}/rt/sensing/imu/{sensor_name}/imu_raw");
     let imu_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
         let header = utils::create_ros_header().unwrap();
