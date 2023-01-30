@@ -110,7 +110,7 @@ class World(object):
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
-        self.gnss_sensor = GnssSensor(self.player)
+        self.gnss_sensor = GnssSensor(self.player, sensor_name='ublox')
         self.imu_sensor = IMUSensor(self.player, sensor_name='tamagawa')
         self.lidar_sensor = LidarSensor(self.player, sensor_name='top')
         self.rgb_camera = RgbCamera(self.player, sensor_name='traffic_light')

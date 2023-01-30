@@ -10,3 +10,21 @@ pub enum PointFieldType {
     FLOAT32 = 7,
     FLOAT64 = 8,
 }
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub enum GnssStatus {
+    StatusNoFix = -1,
+    StatusFix = 0,
+    StatusSbasFix = 1,
+    StatusGbasFix = 2,
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub enum GnssService {
+    ServiceGps = 1,
+    ServiceGlonass = 2,
+    ServiceCompass = 4,
+    ServiceGalileo = 8,
+}

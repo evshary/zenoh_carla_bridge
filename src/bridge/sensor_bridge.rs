@@ -1,7 +1,7 @@
 use super::actor_bridge::ActorBridge;
 use crate::{
     error::{Error, Result},
-    types::PointFieldType,
+    types::{GnssService, GnssStatus, PointFieldType},
     utils::{self, ToRosType},
 };
 use carla::{
@@ -9,8 +9,8 @@ use carla::{
     geom::Location,
     prelude::*,
     sensor::data::{
-        Color, Image as CarlaImage, ImuMeasurement, LidarDetection, LidarMeasurement,
-        SemanticLidarDetection, SemanticLidarMeasurement,
+        Color, GnssMeasurement, Image as CarlaImage, ImuMeasurement, LidarDetection,
+        LidarMeasurement, SemanticLidarDetection, SemanticLidarMeasurement,
     },
 };
 use cdr::{CdrLe, Infinite};
@@ -18,7 +18,7 @@ use log::{info, warn};
 use nalgebra::{coordinates::XYZ, UnitQuaternion};
 use r2r::{
     builtin_interfaces::msg::Time,
-    sensor_msgs::msg::{Image as RosImage, Imu, PointCloud2, PointField},
+    sensor_msgs::msg::{Image as RosImage, Imu, NavSatFix, NavSatStatus, PointCloud2, PointField},
     std_msgs::msg::Header,
 };
 use std::{convert::Infallible, mem, str::FromStr, sync::Arc};
@@ -30,6 +30,7 @@ pub enum SensorType {
     LidarRayCast,
     LidarRayCastSemantic,
     Imu,
+    Gnss,
     Collision,
     NotSupport,
 }
@@ -43,6 +44,7 @@ impl FromStr for SensorType {
             "sensor.lidar.ray_cast" => SensorType::LidarRayCast,
             "sensor.lidar.ray_cast_semantic" => SensorType::LidarRayCastSemantic,
             "sensor.other.imu" => SensorType::Imu,
+            "sensor.other.gnss" => SensorType::Gnss,
             "sensor.other.collision" => SensorType::Collision,
             _ => SensorType::NotSupport,
         })
@@ -89,6 +91,9 @@ impl SensorBridge {
             }
             SensorType::Imu => {
                 register_imu(z_session, &actor, &vehicle_name, &sensor_name)?;
+            }
+            SensorType::Gnss => {
+                register_gnss(z_session, &actor, &vehicle_name, &sensor_name)?;
             }
             SensorType::Collision => {
                 warn!("Collision sensor is not supported yet");
@@ -171,6 +176,21 @@ fn register_imu(
     actor.listen(move |data| {
         let header = utils::create_ros_header().unwrap();
         imu_callback(header, data.try_into().unwrap(), &imu_publisher).unwrap();
+    });
+    Ok(())
+}
+
+fn register_gnss(
+    z_session: Arc<Session>,
+    actor: &Sensor,
+    vehicle_name: &str,
+    sensor_name: &str,
+) -> Result<()> {
+    let key = format!("{vehicle_name}/rt/sensing/gnss/{sensor_name}/nav_sat_fix");
+    let gnss_publisher = z_session.declare_publisher(key).res()?;
+    actor.listen(move |data| {
+        let header = utils::create_ros_header().unwrap();
+        gnss_callback(header, data.try_into().unwrap(), &gnss_publisher).unwrap();
     });
     Ok(())
 }
@@ -369,6 +389,31 @@ fn imu_callback(header: Header, measure: ImuMeasurement, imu_publisher: &Publish
     };
     let encoded = cdr::serialize::<_, _, CdrLe>(&imu_msg, Infinite)?;
     imu_publisher.put(encoded).res()?;
+    Ok(())
+}
+
+fn gnss_callback(
+    header: Header,
+    measure: GnssMeasurement,
+    gnss_publisher: &Publisher,
+) -> Result<()> {
+    let gnss_msg = NavSatFix {
+        header,
+        latitude: measure.latitude(),
+        longitude: measure.longitude(),
+        altitude: measure.attitude() + 17.0,
+        status: NavSatStatus {
+            status: GnssStatus::StatusSbasFix as i8,
+            service: GnssService::ServiceGps as u16
+                | GnssService::ServiceGlonass as u16
+                | GnssService::ServiceCompass as u16
+                | GnssService::ServiceGalileo as u16,
+        },
+        position_covariance: vec![0.0],
+        position_covariance_type: 0, // unknown type
+    };
+    let encoded = cdr::serialize::<_, _, CdrLe>(&gnss_msg, Infinite)?;
+    gnss_publisher.put(encoded).res()?;
     Ok(())
 }
 
