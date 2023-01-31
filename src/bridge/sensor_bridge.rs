@@ -18,7 +18,10 @@ use log::{info, warn};
 use nalgebra::{coordinates::XYZ, UnitQuaternion};
 use r2r::{
     builtin_interfaces::msg::Time,
-    sensor_msgs::msg::{Image as RosImage, Imu, NavSatFix, NavSatStatus, PointCloud2, PointField},
+    sensor_msgs::msg::{
+        CameraInfo, Image as RosImage, Imu, NavSatFix, NavSatStatus, PointCloud2, PointField,
+        RegionOfInterest,
+    },
     std_msgs::msg::Header,
 };
 use std::{convert::Infallible, mem, str::FromStr, sync::Arc};
@@ -122,12 +125,43 @@ fn register_camera_rgb(
     vehicle_name: &str,
     sensor_name: &str,
 ) -> Result<()> {
-    let key = format!("{vehicle_name}/rt/sensing/camera/{sensor_name}/image_raw");
+    let raw_key = format!("{vehicle_name}/rt/sensing/camera/{sensor_name}/image_raw");
+    let info_key = format!("{vehicle_name}/rt/sensing/camera/{sensor_name}/camera_info");
 
-    let image_publisher = z_session.declare_publisher(key).res()?;
+    let image_publisher = z_session.declare_publisher(raw_key).res()?;
+    let info_publisher = z_session.declare_publisher(info_key).res()?;
+    let width = actor
+        .attributes()
+        .iter()
+        .find(|attr| attr.id() == "image_size_x")
+        .unwrap()
+        .value()
+        .unwrap()
+        .try_into_int()
+        .unwrap() as u32;
+    let height = actor
+        .attributes()
+        .iter()
+        .find(|attr| attr.id() == "image_size_y")
+        .unwrap()
+        .value()
+        .unwrap()
+        .try_into_int()
+        .unwrap() as u32;
+    let fov = actor
+        .attributes()
+        .iter()
+        .find(|attr| attr.id() == "fov")
+        .unwrap()
+        .value()
+        .unwrap()
+        .try_into_f32()
+        .unwrap() as f64;
+
     actor.listen(move |data| {
         let header = utils::create_ros_header().unwrap();
-        camera_callback(header, data.try_into().unwrap(), &image_publisher).unwrap();
+        camera_callback(header.clone(), data.try_into().unwrap(), &image_publisher).unwrap();
+        camera_info_callback(header, width, height, fov, &info_publisher).unwrap();
     });
 
     Ok(())
@@ -219,6 +253,43 @@ fn camera_callback(header: Header, image: CarlaImage, image_publisher: &Publishe
 
     let encoded = cdr::serialize::<_, _, CdrLe>(&image_msg, Infinite)?;
     image_publisher.put(encoded).res()?;
+    Ok(())
+}
+
+fn camera_info_callback(
+    header: Header,
+    width: u32,
+    height: u32,
+    fov: f64,
+    info_publisher: &Publisher,
+) -> Result<()> {
+    let cx = width as f64 / 2.0;
+    let cy = height as f64 / 2.0;
+    let fx = width as f64 / (2.0 * (fov * std::f64::consts::PI / 360.0).tan());
+    let fy = fx;
+
+    let camera_info = CameraInfo {
+        header,
+        width,
+        height,
+        distortion_model: String::from("plumb_bob"),
+        k: vec![fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0],
+        d: vec![0.0, 0.0, 0.0, 0.0, 0.0],
+        r: vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+        p: vec![fx, 0.0, cx, 0.0, 0.0, fy, cy, 0.0, 0.0, 0.0, 1.0, 0.0],
+        binning_x: 0,
+        binning_y: 0,
+        roi: RegionOfInterest {
+            x_offset: 0,
+            y_offset: 0,
+            height: 0,
+            width: 0,
+            do_rectify: false,
+        },
+    };
+
+    let encoded = cdr::serialize::<_, _, CdrLe>(&camera_info, Infinite)?;
+    info_publisher.put(encoded).res()?;
     Ok(())
 }
 
