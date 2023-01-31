@@ -1,5 +1,5 @@
 use super::actor_bridge::ActorBridge;
-use crate::error::Result;
+use crate::{error::Result, utils};
 use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
 use carla::{
@@ -16,9 +16,11 @@ use r2r::{
     autoware_auto_control_msgs::msg::{
         AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
     },
+    autoware_auto_vehicle_msgs::msg::ControlModeReport,
+    autoware_auto_vehicle_msgs::msg::GearReport,
+    autoware_auto_vehicle_msgs::msg::SteeringReport,
     autoware_auto_vehicle_msgs::msg::VelocityReport,
     builtin_interfaces::msg::Time,
-    std_msgs::msg::Header,
 };
 use std::sync::{atomic::Ordering, Arc};
 use zenoh::{
@@ -31,6 +33,9 @@ pub struct VehicleBridge<'a> {
     _subscriber_control_cmd: Subscriber<'a, ()>,
     _subscriber_gear_cmd: Subscriber<'a, ()>,
     publisher_velocity: Publisher<'a>,
+    publisher_steer: Publisher<'a>,
+    publisher_gear: Publisher<'a>,
+    publisher_control: Publisher<'a>,
     speed: Arc<AtomicF32>,
     controller: VehicleController,
     current_ackermann_cmd: Arc<ArcSwap<AckermannControlCommand>>,
@@ -50,6 +55,15 @@ impl<'a> VehicleBridge<'a> {
 
         let publisher_velocity = z_session
             .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/velocity_status"))
+            .res()?;
+        let publisher_steer = z_session
+            .declare_publisher(format!("{vehicle_name}/rt/vehicle/steering_status"))
+            .res()?;
+        let publisher_gear = z_session
+            .declare_publisher(format!("{vehicle_name}/rt/vehicle/gear_status"))
+            .res()?;
+        let publisher_control = z_session
+            .declare_publisher(format!("{vehicle_name}/rt/vehicle/control_mode"))
             .res()?;
         let speed = Arc::new(AtomicF32::new(0.0));
 
@@ -81,23 +95,23 @@ impl<'a> VehicleBridge<'a> {
             _subscriber_control_cmd: subscriber_control_cmd,
             _subscriber_gear_cmd: subscriber_gear_cmd,
             publisher_velocity,
+            publisher_steer,
+            publisher_gear,
+            publisher_control,
             speed,
             controller,
             current_ackermann_cmd,
         })
     }
 
-    fn pub_current_velocity(&mut self, stamp: &Time) -> Result<()> {
+    fn pub_current_velocity(&mut self) -> Result<()> {
         //let transform = vehicle_actor.transform();
         let velocity = self.actor.velocity();
         //let angular_velocity = vehicle_actor.angular_velocity();
         //let accel = vehicle_actor.acceleration();
+        let header = utils::create_ros_header().unwrap();
         let velocity_msg = VelocityReport {
-            header: Header {
-                // TODO: Use correct timestamp
-                stamp: stamp.clone(),
-                frame_id: String::from(""),
-            },
+            header,
             longitudinal_velocity: velocity.norm(),
             lateral_velocity: 0.0,
             // The heading rate is 1 deg to 0.00866, and the direction is reverse
@@ -115,6 +129,42 @@ impl<'a> VehicleBridge<'a> {
         self.speed
             .store(velocity_msg.longitudinal_velocity, Ordering::Relaxed);
 
+        Ok(())
+    }
+
+    fn pub_current_steer(&mut self) -> Result<()> {
+        let header = utils::create_ros_header().unwrap();
+        let steer_msg = SteeringReport {
+            stamp: header.stamp,
+            steering_tire_angle: self
+                .actor
+                .get_wheel_steer_angle(VehicleWheelLocation::FL_Wheel)
+                * -0.00866,
+        };
+        let encoded = cdr::serialize::<_, _, CdrLe>(&steer_msg, Infinite)?;
+        self.publisher_steer.put(encoded).res()?;
+        Ok(())
+    }
+
+    fn pub_current_gear(&mut self) -> Result<()> {
+        let header = utils::create_ros_header().unwrap();
+        let gear_msg = GearReport {
+            stamp: header.stamp,
+            report: if self.actor.control().reverse { 20 } else { 2 }, // TODO: Use enum (20: reverse, 2: drive)
+        };
+        let encoded = cdr::serialize::<_, _, CdrLe>(&gear_msg, Infinite)?;
+        self.publisher_gear.put(encoded).res()?;
+        Ok(())
+    }
+
+    fn pub_current_control(&mut self) -> Result<()> {
+        let header = utils::create_ros_header().unwrap();
+        let control_msg = ControlModeReport {
+            stamp: header.stamp,
+            mode: 1, // 1: AUTONOMOUS, 4: MANUAL. TODO: Now we don't have any way to switch these two modes.
+        };
+        let encoded = cdr::serialize::<_, _, CdrLe>(&control_msg, Infinite)?;
+        self.publisher_control.put(encoded).res()?;
         Ok(())
     }
 
@@ -185,7 +235,10 @@ impl<'a> VehicleBridge<'a> {
 
 impl<'a> ActorBridge for VehicleBridge<'a> {
     fn step(&mut self, stamp: &Time, elapsed_sec: f64) -> Result<()> {
-        self.pub_current_velocity(stamp)?;
+        self.pub_current_velocity()?;
+        self.pub_current_steer()?;
+        self.pub_current_gear()?;
+        self.pub_current_control()?;
         self.update_carla_control(elapsed_sec);
         Ok(())
     }
