@@ -58,7 +58,7 @@ impl<'a> VehicleBridge<'a> {
             Arc::new(ArcSwap::from_pointee(AckermannControlCommand::default()));
         let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
-            .declare_subscriber(format!("{vehicle_name}/rt/external/selected/control_cmd"))
+            .declare_subscriber(format!("{vehicle_name}/rt/control/command/control_cmd"))
             .callback_mut(move |sample| {
                 let result: Result<AckermannControlCommand, _> =
                     cdr::deserialize_from(sample.payload.reader(), cdr::size::Infinite);
@@ -68,14 +68,8 @@ impl<'a> VehicleBridge<'a> {
                 cloned_cmd.store(Arc::new(cmd));
             })
             .res()?;
-        let _subscriber_gate_mode = z_session
-            .declare_subscriber(format!("{vehicle_name}/rt/control/gate_mode_cmd"))
-            .callback_mut(move |_| {
-                // TODO
-            })
-            .res()?;
         let subscriber_gear_cmd = z_session
-            .declare_subscriber(format!("{vehicle_name}/rt/external/selected/gear_cmd"))
+            .declare_subscriber(format!("{vehicle_name}/rt/control/command/gear_cmd"))
             .callback_mut(move |_sample| {
                 // TODO: We don't this now, since reverse will be calculated while subscribing control_cmd
             })
