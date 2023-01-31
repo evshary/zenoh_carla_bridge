@@ -9,7 +9,6 @@ use carla::{client::Client, prelude::*, rpc::ActorId};
 use clap::Parser;
 use error::Error;
 use log::{error, info};
-use r2r::{Clock, ClockType};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -46,12 +45,9 @@ fn main() -> Result<(), Error> {
     let mut bridge_list: HashMap<ActorId, Box<dyn ActorBridge>> = HashMap::new();
 
     let mut last_time = Instant::now();
-    let mut clock = Clock::create(ClockType::RosTime)?;
 
     loop {
         let elapsed_time = last_time.elapsed().as_secs_f64();
-        let time = Clock::to_builtin_time(&clock.get_now()?);
-
         {
             let mut actor_list: HashMap<ActorId, _> = world
                 .actors()
@@ -87,7 +83,7 @@ fn main() -> Result<(), Error> {
 
         bridge_list
             .values_mut()
-            .try_for_each(|bridge| bridge.step(&time, elapsed_time))?;
+            .try_for_each(|bridge| bridge.step(elapsed_time))?;
         last_time = Instant::now();
         world.wait_for_tick();
 

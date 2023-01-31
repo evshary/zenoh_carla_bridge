@@ -17,7 +17,6 @@ use cdr::{CdrLe, Infinite};
 use log::{info, warn};
 use nalgebra::{coordinates::XYZ, UnitQuaternion};
 use r2r::{
-    builtin_interfaces::msg::Time,
     sensor_msgs::msg::{
         CameraInfo, Image as RosImage, Imu, NavSatFix, NavSatStatus, PointCloud2, PointField,
         RegionOfInterest,
@@ -114,7 +113,7 @@ impl SensorBridge {
 }
 
 impl ActorBridge for SensorBridge {
-    fn step(&mut self, _stamp: &Time, _elapsed_sec: f64) -> Result<()> {
+    fn step(&mut self, _elapsed_sec: f64) -> Result<()> {
         Ok(())
     }
 }

@@ -20,7 +20,6 @@ use r2r::{
     autoware_auto_vehicle_msgs::msg::GearReport,
     autoware_auto_vehicle_msgs::msg::SteeringReport,
     autoware_auto_vehicle_msgs::msg::VelocityReport,
-    builtin_interfaces::msg::Time,
 };
 use std::sync::{atomic::Ordering, Arc};
 use zenoh::{
@@ -234,7 +233,7 @@ impl<'a> VehicleBridge<'a> {
 }
 
 impl<'a> ActorBridge for VehicleBridge<'a> {
-    fn step(&mut self, stamp: &Time, elapsed_sec: f64) -> Result<()> {
+    fn step(&mut self, elapsed_sec: f64) -> Result<()> {
         self.pub_current_velocity()?;
         self.pub_current_steer()?;
         self.pub_current_gear()?;

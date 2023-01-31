@@ -5,12 +5,11 @@ use super::{
 };
 use crate::error::Result;
 use carla::client::{Actor, ActorKind};
-use r2r::builtin_interfaces::msg::Time;
 use std::sync::Arc;
 use zenoh::prelude::sync::*;
 
 pub trait ActorBridge {
-    fn step(&mut self, stamp: &Time, elapsed_sec: f64) -> Result<()>;
+    fn step(&mut self, elapsed_sec: f64) -> Result<()>;
 }
 
 // z_session should outlive Box<>

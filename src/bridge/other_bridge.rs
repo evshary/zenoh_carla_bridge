@@ -1,7 +1,6 @@
 use super::actor_bridge::ActorBridge;
 use crate::error::Result;
 use carla::client::Actor;
-use r2r::builtin_interfaces::msg::Time;
 use std::sync::Arc;
 use zenoh::prelude::sync::*;
 
@@ -16,7 +15,7 @@ impl OtherActorBridge {
 }
 
 impl ActorBridge for OtherActorBridge {
-    fn step(&mut self, _stamp: &Time, _elapsed_sec: f64) -> Result<()> {
+    fn step(&mut self, _elapsed_sec: f64) -> Result<()> {
         Ok(())
     }
 }
