@@ -207,7 +207,8 @@ fn register_imu(
     let key = format!("{vehicle_name}/rt/sensing/imu/{sensor_name}/imu_raw");
     let imu_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
-        let header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header().unwrap();
+        header.frame_id = String::from("tamagawa/imu_link");
         imu_callback(header, data.try_into().unwrap(), &imu_publisher).unwrap();
     });
     Ok(())
