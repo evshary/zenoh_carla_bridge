@@ -13,7 +13,8 @@ class LidarSensor(object):
 
         world = actor.get_world()
         trans = Transform(Location(x=+0.8 * bound_x, y=+0.0 * bound_y, z=1.3 * bound_z))
-        bp = world.get_blueprint_library().find("sensor.lidar.ray_cast_semantic")
+        bp = world.get_blueprint_library().find("sensor.lidar.ray_cast")  # We use not semantic here
+        #bp = world.get_blueprint_library().find("sensor.lidar.ray_cast_semantic")
         bp.set_attribute("channels", "128")
         bp.set_attribute("points_per_second", "600000")
         bp.set_attribute("rotation_frequency", "10")
