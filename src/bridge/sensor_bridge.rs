@@ -172,10 +172,11 @@ fn register_lidar_raycast(
     vehicle_name: &str,
     sensor_name: &str,
 ) -> Result<()> {
-    let key = format!("{vehicle_name}/rt/sensing/lidar/{sensor_name}/pointcloud_raw");
+    let key = format!("{vehicle_name}/rt/carla_pointcloud");
     let pcd_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
-        let header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header().unwrap();
+        header.frame_id = String::from("velodyne_top_base_link");
         lidar_callback(header, data.try_into().unwrap(), &pcd_publisher).unwrap();
     });
 
@@ -188,7 +189,7 @@ fn register_lidar_raycast_semantic(
     vehicle_name: &str,
     sensor_name: &str,
 ) -> Result<()> {
-    let key = format!("{vehicle_name}/rt/sensing/lidar/{sensor_name}/pointcloud_raw");
+    let key = format!("{vehicle_name}/rt/carla_pointcloud");
     let pcd_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
         let header = utils::create_ros_header().unwrap();
@@ -303,7 +304,6 @@ fn lidar_callback(
         return Ok(());
     }
     let point_step = mem::size_of_val(&lidar_data[0]) as u32;
-    let row_step = lidar_data.len() as u32;
     let data: Vec<_> = lidar_data
         .iter()
         .flat_map(|det| {
@@ -315,6 +315,7 @@ fn lidar_callback(
         })
         .flat_map(|elem| elem.to_ne_bytes())
         .collect();
+    let row_step = data.len() as u32;
     let fields = vec![
         PointField {
             name: "x".to_string(),
