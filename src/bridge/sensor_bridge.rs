@@ -158,7 +158,8 @@ fn register_camera_rgb(
         .unwrap() as f64;
 
     actor.listen(move |data| {
-        let header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header().unwrap();
+        header.frame_id = String::from("camera4/camera_link");
         camera_callback(header.clone(), data.try_into().unwrap(), &image_publisher).unwrap();
         camera_info_callback(header, width, height, fov, &info_publisher).unwrap();
     });
@@ -170,13 +171,13 @@ fn register_lidar_raycast(
     z_session: Arc<Session>,
     actor: &Sensor,
     vehicle_name: &str,
-    sensor_name: &str,
+    _sensor_name: &str,
 ) -> Result<()> {
     let key = format!("{vehicle_name}/rt/carla_pointcloud");
     let pcd_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
         let mut header = utils::create_ros_header().unwrap();
-        header.frame_id = String::from("velodyne_top_base_link");
+        header.frame_id = String::from("velodyne_top");
         lidar_callback(header, data.try_into().unwrap(), &pcd_publisher).unwrap();
     });
 
@@ -187,12 +188,13 @@ fn register_lidar_raycast_semantic(
     z_session: Arc<Session>,
     actor: &Sensor,
     vehicle_name: &str,
-    sensor_name: &str,
+    _sensor_name: &str,
 ) -> Result<()> {
     let key = format!("{vehicle_name}/rt/carla_pointcloud");
     let pcd_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
-        let header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header().unwrap();
+        header.frame_id = String::from("velodyne_top");
         senmatic_lidar_callback(header, data.try_into().unwrap(), &pcd_publisher).unwrap();
     });
 
@@ -224,7 +226,8 @@ fn register_gnss(
     let key = format!("{vehicle_name}/rt/sensing/gnss/{sensor_name}/nav_sat_fix");
     let gnss_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
-        let header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header().unwrap();
+        header.frame_id = String::from("gnss_link");
         gnss_callback(header, data.try_into().unwrap(), &gnss_publisher).unwrap();
     });
     Ok(())
