@@ -22,7 +22,8 @@ cargo build
 
 ```shell
 cd carla_agent/
-poetry run python3 main.py --rolename "v1"
+poetry install
+poetry run main --rolename "v1"
 ```
 
 * Terminal3: Run bridge DDS
