@@ -3,8 +3,7 @@ name = "carla-agent"
 version = "0.1.0"
 description = ""
 authors = ["ChenYing Kuo <evshary@gmail.com>"]
-readme = "README.md"
-packages = [{include = "carla_agent"}]
+# readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -12,6 +11,8 @@ pygame = "^2.1.2"
 carla = "0.9.13"
 numpy = "^1.24.1"
 
+[tool.poetry.scripts]
+main = "carla_agent:main"
 
 [build-system]
 requires = ["poetry-core"]
