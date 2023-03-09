@@ -56,7 +56,7 @@ impl<'a> VehicleBridge<'a> {
             .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/velocity_status"))
             .res()?;
         let publisher_steer = z_session
-            .declare_publisher(format!("{vehicle_name}/rt/vehicle/steering_status"))
+            .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/steering_status"))
             .res()?;
         let publisher_gear = z_session
             .declare_publisher(format!("{vehicle_name}/rt/vehicle/gear_status"))
