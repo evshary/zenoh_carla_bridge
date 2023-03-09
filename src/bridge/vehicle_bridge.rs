@@ -108,7 +108,8 @@ impl<'a> VehicleBridge<'a> {
         let velocity = self.actor.velocity();
         //let angular_velocity = vehicle_actor.angular_velocity();
         //let accel = vehicle_actor.acceleration();
-        let header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header().unwrap();
+        header.frame_id = String::from("base_link");
         let velocity_msg = VelocityReport {
             header,
             longitudinal_velocity: velocity.norm(),
