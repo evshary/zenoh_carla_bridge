@@ -314,7 +314,7 @@ fn lidar_callback(
                 point: Location { x, y, z },
                 intensity,
             } = *det;
-            [x, y, z, intensity]
+            [y, x, z, intensity]
         })
         .flat_map(|elem| elem.to_ne_bytes())
         .collect();
