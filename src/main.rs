@@ -1,4 +1,5 @@
 mod bridge;
+mod clock;
 mod error;
 mod types;
 mod utils;
@@ -7,6 +8,7 @@ use anyhow::Result;
 use bridge::actor_bridge::ActorBridge;
 use carla::{client::Client, prelude::*, rpc::ActorId};
 use clap::Parser;
+use clock::SimulatorClock;
 use error::Error;
 use log::{error, info};
 use std::{
@@ -45,9 +47,10 @@ fn main() -> Result<(), Error> {
     let mut bridge_list: HashMap<ActorId, Box<dyn ActorBridge>> = HashMap::new();
 
     let mut last_time = Instant::now();
+    let mut simulator_clock = SimulatorClock::new(z_session.clone(), true).unwrap();
 
     loop {
-        let elapsed_time = last_time.elapsed().as_secs_f64();
+        let elapsed_time = last_time.elapsed();
         {
             let mut actor_list: HashMap<ActorId, _> = world
                 .actors()
@@ -83,7 +86,11 @@ fn main() -> Result<(), Error> {
 
         bridge_list
             .values_mut()
-            .try_for_each(|bridge| bridge.step(elapsed_time))?;
+            .try_for_each(|bridge| bridge.step(elapsed_time.as_secs_f64()))?;
+
+        simulator_clock.update_clock(elapsed_time);
+        simulator_clock.publish_clock()?;
+
         last_time = Instant::now();
         world.wait_for_tick();
 
