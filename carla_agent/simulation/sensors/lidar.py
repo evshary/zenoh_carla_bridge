@@ -1,30 +1,31 @@
-from carla import Actor, Transform, Location, AttachmentType
+from carla import Actor, Transform, Location, Rotation
 import weakref
-from ..utils import get_actor_bounding_extent
 
 class LidarSensor(object):
     callback = None
 
     def __init__(self, actor: Actor, range: float = 50, sensor_name = 'lidar'):
-        extent = get_actor_bounding_extent(actor)
-        bound_x = extent.x
-        bound_y = extent.y
-        bound_z = extent.z
-
         world = actor.get_world()
-        trans = Transform(Location(x=+0.8 * bound_x, y=+0.0 * bound_y, z=1.3 * bound_z))
-        bp = world.get_blueprint_library().find("sensor.lidar.ray_cast")  # We use not semantic here
-        #bp = world.get_blueprint_library().find("sensor.lidar.ray_cast_semantic")
-        bp.set_attribute("channels", "128")
-        bp.set_attribute("points_per_second", "600000")
-        bp.set_attribute("rotation_frequency", "10")
-        bp.set_attribute("range", str(range))
+        trans = Transform(Location(x=0.0, y=0.0, z=2.4),
+                          Rotation(pitch=0.0, roll=0.0, yaw=270.0))
+        bp = world.get_blueprint_library().find("sensor.lidar.ray_cast")
+
         bp.set_attribute('role_name', sensor_name)
+        bp.set_attribute('range', str(100))                    
+        bp.set_attribute('rotation_frequency', str(20))
+        bp.set_attribute('channels', str(64))
+        bp.set_attribute('upper_fov', str(10))
+        bp.set_attribute('lower_fov', str(-30))                    
+        bp.set_attribute('points_per_second', str(1200000))
+        bp.set_attribute('atmosphere_attenuation_rate', str(0.004))
+        bp.set_attribute('dropoff_general_rate', str(0.45))
+        bp.set_attribute('dropoff_intensity_limit', str(0.8))
+        bp.set_attribute('dropoff_zero_intensity', str(0.4))
+
         sensor = world.spawn_actor(
             bp,
             trans,
             attach_to=actor,
-            attachment_type=AttachmentType.Rigid,
         )
 
         # We need a weak reference to self to avoid circular reference.
