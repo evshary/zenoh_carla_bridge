@@ -9,10 +9,19 @@ class LaneInvasionSensor(object):
         if parent_actor.type_id.startswith("vehicle."):
             self._parent = parent_actor
             self.hud = hud
+
             world = self._parent.get_world()
             bp = world.get_blueprint_library().find('sensor.other.lane_invasion')
             bp.set_attribute('role_name', sensor_name)
-            self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
+
+            trans = carla.Transform()
+
+            self.sensor = world.spawn_actor(
+                bp,
+                trans,
+                attach_to=self._parent
+            )
+
             # We need to pass the lambda a weak reference to self to avoid circular
             # reference.
             weak_self = weakref.ref(self)

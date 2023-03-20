@@ -11,18 +11,23 @@ class RadarSensor(object):
         bound_z = 0.5 + self._parent.bounding_box.extent.z
 
         self.velocity_range = 7.5 # m/s
+
         world = self._parent.get_world()
         self.debug = world.debug
+
         bp = world.get_blueprint_library().find('sensor.other.radar')
         bp.set_attribute('horizontal_fov', str(35))
         bp.set_attribute('vertical_fov', str(20))
         bp.set_attribute('role_name', sensor_name)
+
+        trans = carla.Transform(carla.Location(x=bound_x + 0.05, z=bound_z+0.05),
+                                carla.Rotation(pitch=5)),
+
         self.sensor = world.spawn_actor(
             bp,
-            carla.Transform(
-                carla.Location(x=bound_x + 0.05, z=bound_z+0.05),
-                carla.Rotation(pitch=5)),
+            trans,
             attach_to=self._parent)
+
         # We need a weak reference to self to avoid circular reference.
         weak_self = weakref.ref(self)
         self.sensor.listen(

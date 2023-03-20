@@ -20,9 +20,11 @@ class RgbCamera(object):
         bound_z = extent.z
 
         world = actor.get_world()
-        trans = Transform(Location(x=+0.8 * bound_x, y=+0.0 * bound_y, z=1.3 * bound_z))
         bp = world.get_blueprint_library().find("sensor.camera.rgb")
         bp.set_attribute('role_name', sensor_name)
+
+        trans = Transform(Location(x=+0.8 * bound_x, y=+0.0 * bound_y, z=1.3 * bound_z))
+
         sensor = world.spawn_actor(
             bp,
             trans,

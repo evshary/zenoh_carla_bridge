@@ -9,12 +9,26 @@ class IMUSensor(object):
         self.accelerometer = (0.0, 0.0, 0.0)
         self.gyroscope = (0.0, 0.0, 0.0)
         self.compass = 0.0
+
         world = self._parent.get_world()
         bp = world.get_blueprint_library().find('sensor.other.imu')
         bp.set_attribute('role_name', sensor_name)
-        trans = carla.Transform(carla.Location(x=0.0, y=0.0, z=2.4), carla.Rotation(roll=0.0, pitch=0.0, yaw=270.0))
+        bp.set_attribute('noise_accel_stddev_x', str(0.0))
+        bp.set_attribute('noise_accel_stddev_y', str(0.0))
+        bp.set_attribute('noise_accel_stddev_z', str(0.0))
+        bp.set_attribute('noise_gyro_stddev_x', str(0.0))
+        bp.set_attribute('noise_gyro_stddev_y', str(0.0))
+        bp.set_attribute('noise_gyro_stddev_z', str(0.0))
+
+        trans = carla.Transform(carla.Location(x=0.0, y=0.0, z=2.4),
+                                carla.Rotation(roll=0.0, pitch=0.0, yaw=270.0))
+
         self.sensor = world.spawn_actor(
-            bp, trans, attach_to=self._parent)
+            bp,
+            trans,
+            attach_to=self._parent
+        )
+
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
         weak_self = weakref.ref(self)
