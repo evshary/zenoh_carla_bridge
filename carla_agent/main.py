@@ -101,6 +101,10 @@ def main():
         '--sync',
         action='store_true',
         help='Activate synchronous mode execution')
+    argparser.add_argument(
+        '--pygame',
+        action='store_true',
+        help='Run with pygame')
     args = argparser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]

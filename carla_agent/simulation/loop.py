@@ -8,7 +8,8 @@ from .ui import HUD
 
 def game_loop(args, doc):
     pygame.init()
-    pygame.font.init()
+    if args.pygame:
+        pygame.font.init()
     world = None
     original_settings = None
 
@@ -33,15 +34,17 @@ def game_loop(args, doc):
             print("WARNING: You are currently in asynchronous mode and could "
                   "experience some issues with the traffic simulation")
 
-        display = pygame.display.set_mode(
-            (args.width, args.height),
-            pygame.HWSURFACE | pygame.DOUBLEBUF)
-        display.fill((0,0,0))
-        pygame.display.flip()
+        if args.pygame:
+            display = pygame.display.set_mode(
+                (args.width, args.height),
+                pygame.HWSURFACE | pygame.DOUBLEBUF)
+            display.fill((0,0,0))
+            pygame.display.flip()
 
         hud = HUD(args.width, args.height, doc)
         world = World(sim_world, hud, args)
-        controller = KeyboardControl(world, args.autopilot)
+        if args.pygame:
+            controller = KeyboardControl(world, args.autopilot)
 
         if args.sync:
             sim_world.tick()
@@ -53,11 +56,13 @@ def game_loop(args, doc):
             if args.sync:
                 sim_world.tick()
             clock.tick_busy_loop(60)
-            if controller.parse_events(client, world, clock, args.sync):
-                return
+            if args.pygame:
+                if controller.parse_events(client, world, clock, args.sync):
+                    return
             world.tick(clock)
-            world.render(display)
-            pygame.display.flip()
+            if args.pygame:
+                world.render(display)
+                pygame.display.flip()
 
     finally:
         if original_settings:
