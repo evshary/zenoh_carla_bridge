@@ -62,7 +62,7 @@ impl<'a> VehicleBridge<'a> {
             .declare_publisher(format!("{vehicle_name}/rt/vehicle/gear_status"))
             .res()?;
         let publisher_control = z_session
-            .declare_publisher(format!("{vehicle_name}/rt/vehicle/control_mode"))
+            .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/control_mode"))
             .res()?;
         let speed = Arc::new(AtomicF32::new(0.0));
 
