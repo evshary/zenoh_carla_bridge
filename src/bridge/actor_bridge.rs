@@ -9,7 +9,7 @@ use std::sync::Arc;
 use zenoh::prelude::sync::*;
 
 pub trait ActorBridge {
-    fn step(&mut self, elapsed_sec: f64) -> Result<()>;
+    fn step(&mut self, elapsed_sec: f64, timestamp: f64) -> Result<()>;
 }
 
 // z_session should outlive Box<>

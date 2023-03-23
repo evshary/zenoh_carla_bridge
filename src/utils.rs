@@ -2,6 +2,7 @@ use crate::error::Result;
 use carla::geom::BoundingBox;
 use ndarray::Array2;
 use r2r::{
+    builtin_interfaces::msg::Time,
     geometry_msgs::msg::{Point, Point32, Pose, PoseWithCovariance, Quaternion, Vector3},
     moveit_msgs::msg::OrientedBoundingBox,
     std_msgs::msg::Header,
@@ -12,10 +13,18 @@ pub fn is_bigendian() -> bool {
     cfg!(target_endian = "big")
 }
 
-pub fn create_ros_header() -> Result<Header> {
-    let mut clock = Clock::create(ClockType::RosTime)?;
-    let duration = clock.get_now()?;
-    let time = Clock::to_builtin_time(&duration);
+pub fn create_ros_header(timestamp: Option<f64>) -> Result<Header> {
+    let time = if let Some(sec) = timestamp {
+        Time {
+            sec: sec.floor() as i32,
+            nanosec: (sec.fract() * 1000_000_000_f64) as u32,
+        }
+    } else {
+        // If there is no timestamp, use system time
+        let mut clock = Clock::create(ClockType::RosTime)?;
+        let duration = clock.get_now()?;
+        Clock::to_builtin_time(&duration)
+    };
     Ok(Header {
         stamp: time,
         frame_id: "".to_string(),

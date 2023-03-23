@@ -47,7 +47,7 @@ fn main() -> Result<(), Error> {
     let mut bridge_list: HashMap<ActorId, Box<dyn ActorBridge>> = HashMap::new();
 
     let mut last_time = Instant::now();
-    let mut simulator_clock = SimulatorClock::new(z_session.clone(), true).unwrap();
+    let simulator_clock = SimulatorClock::new(z_session.clone()).unwrap();
 
     loop {
         let elapsed_time = last_time.elapsed();
@@ -84,12 +84,12 @@ fn main() -> Result<(), Error> {
             }
         }
 
+        let sec = world.snapshot().timestamp().elapsed_seconds;
         bridge_list
             .values_mut()
-            .try_for_each(|bridge| bridge.step(elapsed_time.as_secs_f64()))?;
+            .try_for_each(|bridge| bridge.step(elapsed_time.as_secs_f64(), sec))?;
 
-        simulator_clock.update_clock(elapsed_time);
-        simulator_clock.publish_clock()?;
+        simulator_clock.publish_clock(Some(sec))?;
 
         last_time = Instant::now();
         world.wait_for_tick();

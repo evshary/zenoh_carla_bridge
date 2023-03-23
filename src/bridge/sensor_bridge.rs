@@ -8,9 +8,12 @@ use carla::{
     client::Sensor,
     geom::Location,
     prelude::*,
-    sensor::data::{
-        Color, GnssMeasurement, Image as CarlaImage, ImuMeasurement, LidarDetection,
-        LidarMeasurement, SemanticLidarDetection, SemanticLidarMeasurement,
+    sensor::{
+        data::{
+            Color, GnssMeasurement, Image as CarlaImage, ImuMeasurement, LidarDetection,
+            LidarMeasurement, SemanticLidarDetection, SemanticLidarMeasurement,
+        },
+        SensorDataBase,
     },
 };
 use cdr::{CdrLe, Infinite};
@@ -113,7 +116,7 @@ impl SensorBridge {
 }
 
 impl ActorBridge for SensorBridge {
-    fn step(&mut self, _elapsed_sec: f64) -> Result<()> {
+    fn step(&mut self, _elapsed_sec: f64, _timestamp: f64) -> Result<()> {
         Ok(())
     }
 }
@@ -158,7 +161,7 @@ fn register_camera_rgb(
         .unwrap() as f64;
 
     actor.listen(move |data| {
-        let mut header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header(Some(data.timestamp())).unwrap();
         header.frame_id = String::from("camera4/camera_link");
         camera_callback(header.clone(), data.try_into().unwrap(), &image_publisher).unwrap();
         camera_info_callback(header, width, height, fov, &info_publisher).unwrap();
@@ -176,7 +179,7 @@ fn register_lidar_raycast(
     let key = format!("{vehicle_name}/rt/carla_pointcloud");
     let pcd_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
-        let mut header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header(Some(data.timestamp())).unwrap();
         header.frame_id = String::from("velodyne_top");
         lidar_callback(header, data.try_into().unwrap(), &pcd_publisher).unwrap();
     });
@@ -193,7 +196,7 @@ fn register_lidar_raycast_semantic(
     let key = format!("{vehicle_name}/rt/carla_pointcloud");
     let pcd_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
-        let mut header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header(Some(data.timestamp())).unwrap();
         header.frame_id = String::from("velodyne_top");
         senmatic_lidar_callback(header, data.try_into().unwrap(), &pcd_publisher).unwrap();
     });
@@ -210,7 +213,7 @@ fn register_imu(
     let key = format!("{vehicle_name}/rt/sensing/imu/{sensor_name}/imu_raw");
     let imu_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
-        let mut header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header(Some(data.timestamp())).unwrap();
         header.frame_id = String::from("tamagawa/imu_link");
         imu_callback(header, data.try_into().unwrap(), &imu_publisher).unwrap();
     });
@@ -226,7 +229,7 @@ fn register_gnss(
     let key = format!("{vehicle_name}/rt/sensing/gnss/{sensor_name}/nav_sat_fix");
     let gnss_publisher = z_session.declare_publisher(key).res()?;
     actor.listen(move |data| {
-        let mut header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header(Some(data.timestamp())).unwrap();
         header.frame_id = String::from("gnss_link");
         gnss_callback(header, data.try_into().unwrap(), &gnss_publisher).unwrap();
     });

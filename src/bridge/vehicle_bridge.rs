@@ -103,12 +103,12 @@ impl<'a> VehicleBridge<'a> {
         })
     }
 
-    fn pub_current_velocity(&mut self) -> Result<()> {
+    fn pub_current_velocity(&mut self, timestamp: f64) -> Result<()> {
         //let transform = vehicle_actor.transform();
         let velocity = self.actor.velocity();
         //let angular_velocity = vehicle_actor.angular_velocity();
         //let accel = vehicle_actor.acceleration();
-        let mut header = utils::create_ros_header().unwrap();
+        let mut header = utils::create_ros_header(Some(timestamp)).unwrap();
         header.frame_id = String::from("base_link");
         let velocity_msg = VelocityReport {
             header,
@@ -132,8 +132,8 @@ impl<'a> VehicleBridge<'a> {
         Ok(())
     }
 
-    fn pub_current_steer(&mut self) -> Result<()> {
-        let header = utils::create_ros_header().unwrap();
+    fn pub_current_steer(&mut self, timestamp: f64) -> Result<()> {
+        let header = utils::create_ros_header(Some(timestamp)).unwrap();
         let steer_msg = SteeringReport {
             stamp: header.stamp,
             steering_tire_angle: self
@@ -146,8 +146,8 @@ impl<'a> VehicleBridge<'a> {
         Ok(())
     }
 
-    fn pub_current_gear(&mut self) -> Result<()> {
-        let header = utils::create_ros_header().unwrap();
+    fn pub_current_gear(&mut self, timestamp: f64) -> Result<()> {
+        let header = utils::create_ros_header(Some(timestamp)).unwrap();
         let gear_msg = GearReport {
             stamp: header.stamp,
             report: if self.actor.control().reverse { 20 } else { 2 }, // TODO: Use enum (20: reverse, 2: drive)
@@ -157,8 +157,8 @@ impl<'a> VehicleBridge<'a> {
         Ok(())
     }
 
-    fn pub_current_control(&mut self) -> Result<()> {
-        let header = utils::create_ros_header().unwrap();
+    fn pub_current_control(&mut self, timestamp: f64) -> Result<()> {
+        let header = utils::create_ros_header(Some(timestamp)).unwrap();
         let control_msg = ControlModeReport {
             stamp: header.stamp,
             mode: 1, // 1: AUTONOMOUS, 4: MANUAL. TODO: Now we don't have any way to switch these two modes.
@@ -234,11 +234,11 @@ impl<'a> VehicleBridge<'a> {
 }
 
 impl<'a> ActorBridge for VehicleBridge<'a> {
-    fn step(&mut self, elapsed_sec: f64) -> Result<()> {
-        self.pub_current_velocity()?;
-        self.pub_current_steer()?;
-        self.pub_current_gear()?;
-        self.pub_current_control()?;
+    fn step(&mut self, elapsed_sec: f64, timestamp: f64) -> Result<()> {
+        self.pub_current_velocity(timestamp)?;
+        self.pub_current_steer(timestamp)?;
+        self.pub_current_gear(timestamp)?;
+        self.pub_current_control(timestamp)?;
         self.update_carla_control(elapsed_sec);
         Ok(())
     }
