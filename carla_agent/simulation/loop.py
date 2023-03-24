@@ -1,3 +1,4 @@
+import time
 import carla
 import pygame
 
@@ -51,16 +52,19 @@ def game_loop(args, doc):
         else:
             sim_world.wait_for_tick()
 
-        clock = pygame.time.Clock()
+        if args.pygame:
+            clock = pygame.time.Clock()
         while True:
             if args.sync:
                 sim_world.tick()
-            clock.tick_busy_loop(60)
+                # 20 ticks for 1 simulated seconds, and tick every 0.2 real seconds
+                # 1 simulated second = 4 real seconds
+                time.sleep(0.2)
             if args.pygame:
+                clock.tick_busy_loop(60)
                 if controller.parse_events(client, world, clock, args.sync):
                     return
-            world.tick(clock)
-            if args.pygame:
+                world.tick(clock)
                 world.render(display)
                 pygame.display.flip()
 
