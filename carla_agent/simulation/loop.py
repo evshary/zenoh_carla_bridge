@@ -57,9 +57,9 @@ def game_loop(args, doc):
         while True:
             if args.sync:
                 sim_world.tick()
-                # 20 ticks for 1 simulated seconds, and tick every 0.2 real seconds
-                # 1 simulated second = 4 real seconds
-                time.sleep(0.2)
+                # 20 ticks for 1 simulated seconds, and tick every 0.1 real seconds
+                # 1 simulated second = 2 real seconds
+                time.sleep(0.1)
             if args.pygame:
                 clock.tick_busy_loop(60)
                 if controller.parse_events(client, world, clock, args.sync):
