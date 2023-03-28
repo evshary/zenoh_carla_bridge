@@ -20,6 +20,7 @@ use r2r::{
     autoware_auto_vehicle_msgs::msg::GearReport,
     autoware_auto_vehicle_msgs::msg::SteeringReport,
     autoware_auto_vehicle_msgs::msg::VelocityReport,
+    builtin_interfaces::msg::Time,
 };
 use std::sync::{atomic::Ordering, Arc};
 use zenoh::{
@@ -114,11 +115,11 @@ impl<'a> VehicleBridge<'a> {
             header,
             longitudinal_velocity: velocity.norm(),
             lateral_velocity: 0.0,
-            // The heading rate is 1 deg to 0.00866, and the direction is reverse
             heading_rate: self
                 .actor
                 .get_wheel_steer_angle(VehicleWheelLocation::FL_Wheel)
-                * -0.00866,
+                .to_radians()
+                * -1.0,
         };
         debug!(
             "Carla => Autoware: current velocity: {}",
@@ -133,13 +134,16 @@ impl<'a> VehicleBridge<'a> {
     }
 
     fn pub_current_steer(&mut self, timestamp: f64) -> Result<()> {
-        let header = utils::create_ros_header(Some(timestamp)).unwrap();
         let steer_msg = SteeringReport {
-            stamp: header.stamp,
+            stamp: Time {
+                sec: timestamp.floor() as i32,
+                nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
+            },
             steering_tire_angle: self
                 .actor
                 .get_wheel_steer_angle(VehicleWheelLocation::FL_Wheel)
-                * -0.00866,
+                .to_radians()
+                * -1.0,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&steer_msg, Infinite)?;
         self.publisher_steer.put(encoded).res()?;
@@ -147,9 +151,11 @@ impl<'a> VehicleBridge<'a> {
     }
 
     fn pub_current_gear(&mut self, timestamp: f64) -> Result<()> {
-        let header = utils::create_ros_header(Some(timestamp)).unwrap();
         let gear_msg = GearReport {
-            stamp: header.stamp,
+            stamp: Time {
+                sec: timestamp.floor() as i32,
+                nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
+            },
             report: if self.actor.control().reverse { 20 } else { 2 }, // TODO: Use enum (20: reverse, 2: drive)
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&gear_msg, Infinite)?;
@@ -158,9 +164,11 @@ impl<'a> VehicleBridge<'a> {
     }
 
     fn pub_current_control(&mut self, timestamp: f64) -> Result<()> {
-        let header = utils::create_ros_header(Some(timestamp)).unwrap();
         let control_msg = ControlModeReport {
-            stamp: header.stamp,
+            stamp: Time {
+                sec: timestamp.floor() as i32,
+                nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
+            },
             mode: 1, // 1: AUTONOMOUS, 4: MANUAL. TODO: Now we don't have any way to switch these two modes.
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&control_msg, Infinite)?;
