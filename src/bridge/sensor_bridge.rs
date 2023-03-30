@@ -450,7 +450,7 @@ fn senmatic_lidar_callback(
     Ok(())
 }
 
-fn imu_callback(header: Header, measure: ImuMeasurement, imu_publisher: &Publisher) -> Result<()> {
+fn imu_callback(header: Header, measure: ImuMeasurement, _imu_publisher: &Publisher) -> Result<()> {
     let accel = measure.accelerometer();
     let compass = measure.compass();
     let orientation = UnitQuaternion::from_euler_angles(0.0, 0.0, -compass);
@@ -465,8 +465,9 @@ fn imu_callback(header: Header, measure: ImuMeasurement, imu_publisher: &Publish
         linear_acceleration: accel.to_ros_type(),
         linear_acceleration_covariance: utils::identity_matrix(3).into_raw_vec(),
     };
-    let encoded = cdr::serialize::<_, _, CdrLe>(&imu_msg, Infinite)?;
-    imu_publisher.put(encoded).res()?;
+    // Since IMU has some issue, ignore it currently.
+    let _encoded = cdr::serialize::<_, _, CdrLe>(&imu_msg, Infinite)?;
+    //imu_publisher.put(encoded).res()?;
     Ok(())
 }
 
