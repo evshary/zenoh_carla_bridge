@@ -95,6 +95,6 @@ fn main() -> Result<(), Error> {
         world.wait_for_tick();
 
         // Sleep here, since the elapsed_time should be larger than certain value or carla_ackermann will have wrong result.
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(50));
     }
 }
