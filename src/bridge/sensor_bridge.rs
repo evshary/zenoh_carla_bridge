@@ -2,7 +2,7 @@ use super::actor_bridge::ActorBridge;
 use crate::{
     error::{Error, Result},
     types::{GnssService, GnssStatus, PointFieldType},
-    utils::{self, ToRosType},
+    utils,
 };
 use carla::{
     client::Sensor,
@@ -20,9 +20,10 @@ use cdr::{CdrLe, Infinite};
 use log::{info, warn};
 use nalgebra::{coordinates::XYZ, UnitQuaternion};
 use r2r::{
+    //geometry_msgs::msg::{Quaternion, Vector3},
     sensor_msgs::msg::{
-        CameraInfo, Image as RosImage, Imu, NavSatFix, NavSatStatus, PointCloud2, PointField,
-        RegionOfInterest,
+        CameraInfo, Image as RosImage, /*Imu,*/ NavSatFix, NavSatStatus, PointCloud2,
+        PointField, RegionOfInterest,
     },
     std_msgs::msg::Header,
 };
@@ -450,24 +451,79 @@ fn senmatic_lidar_callback(
     Ok(())
 }
 
-fn imu_callback(header: Header, measure: ImuMeasurement, _imu_publisher: &Publisher) -> Result<()> {
-    let accel = measure.accelerometer();
-    let compass = measure.compass();
-    let orientation = UnitQuaternion::from_euler_angles(0.0, 0.0, -compass);
-    let gyro = measure.gyroscope();
+/* TODO: Temporarily solution, since r2r generates wrong IMU message type */
+use serde_derive::{Deserialize, Serialize};
+#[derive(Serialize, Deserialize, PartialEq)]
+struct IMU {
+    header: Header,
+    orientation: [f64; 4],
+    orientation_covariance: [f64; 9],
+    angular_velocity: [f64; 3],
+    angular_velocity_covariance: [f64; 9],
+    linear_acceleration: [f64; 3],
+    linear_acceleration_covariance: [f64; 9],
+}
 
+fn imu_callback(header: Header, measure: ImuMeasurement, imu_publisher: &Publisher) -> Result<()> {
+    let accel = measure.accelerometer();
+    let gyro = measure.gyroscope();
+    let compass = measure.compass().to_radians();
+    let orientation = UnitQuaternion::from_euler_angles(0.0, 0.0, -compass);
+
+    /*
+    TODO: We generates IMU message type by ourselves, since r2r views array as Vec.
+          Vec includes some header, so we can't send it directly.
+    */
+    let imu_msg = IMU {
+        header,
+        orientation: [
+            /*x:*/ orientation.coords.data.0[0][3] as f64,
+            /*y:*/ orientation.coords.data.0[0][1] as f64,
+            /*z:*/ orientation.coords.data.0[0][0] as f64,
+            /*w:*/ orientation.coords.data.0[0][2] as f64,
+        ],
+        orientation_covariance: [0.0; 9],
+        angular_velocity: [
+            /*x:*/ -gyro[0] as f64,
+            /*y:*/ gyro[1] as f64,
+            /*z:*/ -gyro[2] as f64,
+        ],
+        angular_velocity_covariance: [0.0; 9],
+        linear_acceleration: [
+            /*x:*/ accel[0] as f64,
+            /*y:*/ -accel[1] as f64,
+            /*z:*/ accel[2] as f64,
+        ],
+        linear_acceleration_covariance: [0.0; 9],
+    };
+
+    /* Original IMU message
     let imu_msg = Imu {
         header,
-        orientation: orientation.to_ros_type(),
-        orientation_covariance: utils::identity_matrix(3).into_raw_vec(),
-        angular_velocity: gyro.to_ros_type(),
-        angular_velocity_covariance: utils::identity_matrix(3).into_raw_vec(),
-        linear_acceleration: accel.to_ros_type(),
-        linear_acceleration_covariance: utils::identity_matrix(3).into_raw_vec(),
+        orientation: Quaternion {
+            x: orientation.coords.data.0[0][3] as f64,
+            y: orientation.coords.data.0[0][1] as f64,
+            z: orientation.coords.data.0[0][0] as f64,
+            w: orientation.coords.data.0[0][2] as f64,
+        },
+        orientation_covariance: [0.0; 9].to_vec(),
+        angular_velocity: Vector3 {
+            x: -gyro[0] as f64,
+            y: gyro[1] as f64,
+            z: -gyro[2] as f64,
+        },
+        angular_velocity_covariance: [0.0; 9].to_vec(),
+        linear_acceleration: Vector3 {
+            x: accel[0] as f64,
+            y: -accel[1] as f64,
+            z: accel[2] as f64,
+        },
+        linear_acceleration_covariance: [0.0; 9].to_vec(),
     };
-    // Since IMU has some issue, ignore it currently.
-    let _encoded = cdr::serialize::<_, _, CdrLe>(&imu_msg, Infinite)?;
-    //imu_publisher.put(encoded).res()?;
+    */
+
+    let encoded = cdr::serialize::<_, _, CdrLe>(&imu_msg, Infinite)?;
+    imu_publisher.put(encoded).res()?;
     Ok(())
 }
 
