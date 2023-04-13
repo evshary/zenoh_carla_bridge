@@ -24,8 +24,8 @@ class World(object):
         self.position = None  # None means random position
         if args.position != "random":
             position = args.position.split(',')
-            self.position = carla.Transform(carla.Location(x=position[0], y=position[1], z=position[2]), 
-                                            carla.Rotation(pitch=position[3], yaw=position[4], roll=position[5]))
+            self.position = carla.Transform(carla.Location(x=float(position[0]), y=float(position[1]), z=float(position[2])), 
+                                            carla.Rotation(pitch=float(position[3]), yaw=float(position[4]), roll=float(position[5])))
         try:
             self.map = self.world.get_map()
         except RuntimeError as error:
