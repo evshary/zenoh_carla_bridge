@@ -20,6 +20,12 @@ class World(object):
         self.world = carla_world
         self.sync = args.sync
         self.actor_role_name = args.rolename
+        # Set initial position
+        self.position = None  # None means random position
+        if args.position != "random":
+            position = args.position.split(',')
+            self.position = carla.Transform(carla.Location(x=position[0], y=position[1], z=position[2]), 
+                                            carla.Rotation(pitch=position[3], yaw=position[4], roll=position[5]))
         try:
             self.map = self.world.get_map()
         except RuntimeError as error:
@@ -102,8 +108,10 @@ class World(object):
                 print('Please add some Vehicle Spawn Point to your UE4 scene.')
                 sys.exit(1)
             spawn_points = self.map.get_spawn_points()
-            spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
-            #spawn_point = config.INIT_POSE # FIX the initial pose
+            if self.position is None:
+                spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            else:
+                spawn_point = self.position
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
             self.show_vehicle_telemetry = False
             self.modify_vehicle_physics(self.player)

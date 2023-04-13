@@ -105,6 +105,11 @@ def main():
         '--pygame',
         action='store_true',
         help='Run with pygame')
+    argparser.add_argument(
+        '--position',
+        metavar='POSITION',
+        default='random',
+        help='Initial position of the vehicle. Format: x,y,z,pitch,yaw,roll. Fill random for randomized position.')
     args = argparser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
