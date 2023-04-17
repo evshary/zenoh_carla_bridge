@@ -1,12 +1,17 @@
-# carla_autoware_zenoh_bridge
+# zenoh_carla_bridge
+
+The repository can bridge Carla and Autoware with Zenoh.
+The bridge tranforms Carla data into Autoware ROS 2 topic and then sends it with Zenoh.
+
+If you want to have a quick demo, refer to [autoware_carla_launch](https://github.com/evshary/autoware_carla_launch)
 
 # Build
 
 * Get the code
 
 ```shell
-git clone https://github.com/evshary/carla_autoware_zenoh_bridge.git
-cd carla_autoware_zenoh_bridge
+git clone https://github.com/evshary/zenoh_carla_bridge.git
+cd zenoh_carla_bridge
 cargo build
 ```
 
@@ -31,7 +36,7 @@ poetry run python3 main.py --rolename "v1"
 ./zenoh-plugin-dds/target/release/zenoh-bridge-dds -s "v1"
 ```
 
-* Terminal4: Run carla\_autoware\_zenoh\_bridge
+* Terminal4: Run zenoh\_carla\_bridge
 
 ```shell
 source /path/to/autoware/install/setup.bash
