@@ -577,28 +577,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "zenoh_carla_bridge"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "arc-swap",
- "atomic_float",
- "carla",
- "carla-ackermann",
- "cdr",
- "clap 4.1.1",
- "log",
- "nalgebra",
- "ndarray",
- "pretty_env_logger",
- "r2r",
- "serde",
- "serde_derive",
- "thiserror",
- "zenoh",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3754,6 +3732,28 @@ dependencies = [
  "zenoh-core",
  "zenoh-crypto",
  "zenoh-sync",
+]
+
+[[package]]
+name = "zenoh_carla_bridge"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "atomic_float",
+ "carla",
+ "carla-ackermann",
+ "cdr",
+ "clap 4.1.1",
+ "log",
+ "nalgebra",
+ "ndarray",
+ "pretty_env_logger",
+ "r2r",
+ "serde",
+ "serde_derive",
+ "thiserror",
+ "zenoh",
 ]
 
 [[package]]
