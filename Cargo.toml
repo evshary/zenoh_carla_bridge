@@ -1,5 +1,5 @@
 [package]
-name = "carla_autoware_zenoh_bridge"
+name = "zenoh_carla_bridge"
 version = "0.1.0"
 edition = "2021"
 
