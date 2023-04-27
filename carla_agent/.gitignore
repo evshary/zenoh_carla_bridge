@@ -4,3 +4,5 @@
 __pycache__
 # Ignore capture images
 _out
+# Ignore pyenv version
+.python-version
