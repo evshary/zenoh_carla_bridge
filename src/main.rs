@@ -42,12 +42,31 @@ fn main() -> Result<(), Error> {
     info!("Running Carla Autoware Zenoh bridge...");
     let z_session = Arc::new(zenoh::open(Config::default()).res()?);
 
+    // Carla
     let client = Client::connect(&carla_address, carla_port, None);
-    let world = client.world();
+    let mut world = client.world();
+    // Carla settings (synchronous)
+    let mut carla_settings = world.settings();
+    carla_settings.synchronous_mode = true;
+    carla_settings.fixed_delta_seconds = Some(0.05);
+    world.apply_settings(&carla_settings, Duration::from_millis(1000));
+
+    // Create bridge list
     let mut bridge_list: HashMap<ActorId, Box<dyn ActorBridge>> = HashMap::new();
 
+    // Create clock publisher
     let mut last_time = Instant::now();
     let simulator_clock = SimulatorClock::new(z_session.clone()).unwrap();
+
+    // Create thread for ticking
+    let client_for_tick = Client::connect(&carla_address, carla_port, None);
+    thread::spawn(move || loop {
+        let mut world = client_for_tick.world();
+        world.tick();
+        // 20 ticks for 1 simulated seconds, and tick every 0.1 real seconds
+        // 1 simulated second = 2 real seconds
+        thread::sleep(Duration::from_millis(100));
+    });
 
     loop {
         let elapsed_time = last_time.elapsed();
