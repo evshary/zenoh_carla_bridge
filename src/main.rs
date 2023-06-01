@@ -29,6 +29,10 @@ struct Opts {
     /// Carla simulator port.
     #[clap(long, default_value = "2000")]
     pub carla_port: u16,
+
+    /// Zenoh listen address.
+    #[clap(long, default_value = "tcp/localhost:7447")]
+    pub zenoh_listen: Vec<String>,
 }
 
 fn main() -> Result<(), Error> {
@@ -37,10 +41,16 @@ fn main() -> Result<(), Error> {
     let Opts {
         carla_address,
         carla_port,
+        zenoh_listen,
     } = Opts::parse();
 
     info!("Running Carla Autoware Zenoh bridge...");
-    let z_session = Arc::new(zenoh::open(Config::default()).res()?);
+    let mut config = Config::default();
+    config
+        .listen
+        .endpoints
+        .extend(zenoh_listen.iter().map(|p| p.parse().unwrap()));
+    let z_session = Arc::new(zenoh::open(config).res()?);
 
     // Carla
     let client = Client::connect(&carla_address, carla_port, None);
