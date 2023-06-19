@@ -23,9 +23,7 @@ use r2r::{
     builtin_interfaces::msg::Time,
 };
 use std::sync::{atomic::Ordering, Arc};
-use zenoh::{
-    buffers::reader::HasReader, prelude::sync::*, publication::Publisher, subscriber::Subscriber,
-};
+use zenoh::{prelude::sync::*, publication::Publisher, subscriber::Subscriber};
 
 pub struct VehicleBridge<'a> {
     vehicle_name: String,
@@ -75,7 +73,7 @@ impl<'a> VehicleBridge<'a> {
             .declare_subscriber(format!("{vehicle_name}/rt/control/command/control_cmd"))
             .callback_mut(move |sample| {
                 let result: Result<AckermannControlCommand, _> =
-                    cdr::deserialize_from(sample.payload.reader(), cdr::size::Infinite);
+                    cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
                 let Ok(cmd) = result else {
                     return;
                 };
