@@ -10,7 +10,7 @@ use carla::{client::Client, prelude::*, rpc::ActorId};
 use clap::Parser;
 use clock::SimulatorClock;
 use error::Error;
-use log::{error, info};
+use log::{debug, info};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -96,9 +96,13 @@ fn main() -> Result<(), Error> {
                 let bridge = match bridge::actor_bridge::create_bridge(z_session.clone(), actor) {
                     Ok(bridge) => bridge,
                     Err(Error::OwnerlessSensor { sensor_id }) => {
-                        error!(
+                        debug!(
                             "Ignore the sensor with ID {sensor_id} is not attached to any vehicle."
                         );
+                        continue;
+                    }
+                    Err(Error::Npc { npc_role_name }) => {
+                        debug!("Ignore NPC vehicle {npc_role_name}.");
                         continue;
                     }
                     Err(err) => return Err(err),
