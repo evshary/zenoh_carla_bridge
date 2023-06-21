@@ -13,4 +13,7 @@ pub enum Error {
 
     #[error("The sensor with ID {sensor_id} is ownerless.")]
     OwnerlessSensor { sensor_id: u32 },
+
+    #[error("The vehicle is NPC")]
+    Npc { npc_role_name: String },
 }

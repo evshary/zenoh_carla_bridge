@@ -67,7 +67,7 @@ impl SensorBridge {
         let sensor_id = actor.id();
         let sensor_type_id = actor.type_id();
 
-        let vehicle_name = actor
+        let mut vehicle_name = actor
             .parent()
             .ok_or(Error::OwnerlessSensor { sensor_id })?
             .attributes()
@@ -81,6 +81,15 @@ impl SensorBridge {
             .find(|attr| attr.id() == "role_name")
             .map(|attr| attr.value_string())
             .unwrap_or_else(|| generate_sensor_name(&actor));
+
+        // Remove "autoware_" in role name
+        if !vehicle_name.starts_with("autoware_") {
+            return Err(Error::Npc {
+                npc_role_name: vehicle_name,
+            });
+        } else {
+            vehicle_name = vehicle_name.replace("autoware_", "");
+        }
 
         info!("Detected a sensor '{sensor_name}' on '{vehicle_name}'");
         let sensor_type: SensorType = sensor_type_id.parse().unwrap();

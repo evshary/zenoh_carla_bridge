@@ -1,5 +1,8 @@
 use super::actor_bridge::ActorBridge;
-use crate::{error::Result, utils};
+use crate::{
+    error::{Error, Result},
+    utils,
+};
 use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
 use carla::{
@@ -41,12 +44,22 @@ pub struct VehicleBridge<'a> {
 
 impl<'a> VehicleBridge<'a> {
     pub fn new(z_session: Arc<Session>, actor: Vehicle) -> Result<VehicleBridge<'a>> {
-        let vehicle_name = actor
+        let mut vehicle_name = actor
             .attributes()
             .iter()
             .find(|attr| attr.id() == "role_name")
             .unwrap()
             .value_string();
+
+        // Remove "autoware_" in role name
+        if !vehicle_name.starts_with("autoware_") {
+            return Err(Error::Npc {
+                npc_role_name: vehicle_name,
+            });
+        } else {
+            vehicle_name = vehicle_name.replace("autoware_", "");
+        }
+
         info!("Detect a vehicle {vehicle_name}");
         let physics_control = actor.physics_control();
         let controller = VehicleController::from_physics_control(&physics_control, None);
