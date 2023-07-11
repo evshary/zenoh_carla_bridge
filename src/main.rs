@@ -79,6 +79,7 @@ fn main() -> Result<(), Error> {
     });
 
     loop {
+        let mut run_step = true;
         let elapsed_time = last_time.elapsed();
         {
             let mut actor_list: HashMap<ActorId, _> = world
@@ -114,15 +115,18 @@ fn main() -> Result<(), Error> {
             for id in deleted_ids {
                 bridge_list.remove(&id).unwrap();
                 info!("Actor {id} deleted");
+                run_step = false; // If there is actors removed, reget all the actor's list
             }
         }
 
-        let sec = world.snapshot().timestamp().elapsed_seconds;
-        bridge_list
-            .values_mut()
-            .try_for_each(|bridge| bridge.step(elapsed_time.as_secs_f64(), sec))?;
-
-        simulator_clock.publish_clock(Some(sec))?;
+        // We only run step while there is no actor removed. Avoid getting vehicles failed
+        if run_step {
+            let sec = world.snapshot().timestamp().elapsed_seconds;
+            bridge_list
+                .values_mut()
+                .try_for_each(|bridge| bridge.step(elapsed_time.as_secs_f64(), sec))?;
+            simulator_clock.publish_clock(Some(sec))?;
+        }
 
         last_time = Instant::now();
         world.wait_for_tick();
