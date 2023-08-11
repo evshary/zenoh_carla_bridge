@@ -425,28 +425,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b645a089122eccb6111b4f81cbc1a49f5900ac4666bb93ac027feaecf15607bf"
 
 [[package]]
-name = "bindgen"
-version = "0.63.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36d860121800b2a9a94f9b5604b332d5cffb234ce17609ea479d723dbc9d3885"
-dependencies = [
- "bitflags",
- "cexpr",
- "clang-sys",
- "lazy_static",
- "lazycell",
- "log",
- "peeking_take_while",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash",
- "shlex",
- "syn 1.0.109",
- "which",
-]
-
-[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2291,72 +2269,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "r2r"
-version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14eae673432c991810e3159cf43e925431fca07fa80eb0edc07118e41bfe3527"
-dependencies = [
- "futures",
- "lazy_static",
- "r2r_actions",
- "r2r_common",
- "r2r_msg_gen",
- "r2r_rcl",
- "serde",
- "serde_json",
- "thiserror",
- "uuid",
-]
-
-[[package]]
-name = "r2r_actions"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92ca396bcf2d078ac4277abe9158091e5ad87a741b03c7483568f7a91cbbd89a"
-dependencies = [
- "bindgen",
- "r2r_common",
- "r2r_msg_gen",
- "r2r_rcl",
-]
-
-[[package]]
-name = "r2r_common"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aef28048b8e0abd1305b7978f719fe9b6c2242305ef24182d826db27ff2abe11"
-dependencies = [
- "bindgen",
- "itertools 0.10.5",
- "sha2",
-]
-
-[[package]]
-name = "r2r_msg_gen"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c84b5a9d27f0fdaeb11855a46c8667ee641d625fcd659b9ad178e8fe4eb76227"
-dependencies = [
- "bindgen",
- "heck",
- "lazy_static",
- "r2r_common",
- "r2r_rcl",
-]
-
-[[package]]
-name = "r2r_rcl"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "148da1f31895978216a679b39b23448dd9e0b9fc50da138968cb36959e6b6219"
-dependencies = [
- "bindgen",
- "paste",
- "r2r_common",
- "widestring",
-]
-
-[[package]]
 name = "rand"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3216,7 +3128,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fa2982af2eec27de306107c027578ff7f423d65f7250e40ce0fea8f45248b81"
 dependencies = [
  "getrandom",
- "serde",
 ]
 
 [[package]]
@@ -3407,12 +3318,6 @@ dependencies = [
  "bytemuck",
  "safe_arch",
 ]
-
-[[package]]
-name = "widestring"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "653f141f39ec16bba3c5abe400a0c60da7468261cc2cbf36805022876bc721a8"
 
 [[package]]
 name = "winapi"
@@ -3956,6 +3861,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "zenoh-ros-type"
+version = "0.3.0"
+source = "git+https://github.com/evshary/zenoh-ros-type?branch=main#dd17cbd542f4bdf2a34baa5ea2152626dee61c96"
+dependencies = [
+ "serde",
+ "serde_derive",
+]
+
+[[package]]
 name = "zenoh-sync"
 version = "0.7.2-rc"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4045,11 +3959,11 @@ dependencies = [
  "nalgebra",
  "ndarray",
  "pretty_env_logger",
- "r2r",
  "serde",
  "serde_derive",
  "thiserror",
  "zenoh",
+ "zenoh-ros-type",
 ]
 
 [[package]]

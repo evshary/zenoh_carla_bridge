@@ -19,14 +19,6 @@ use carla::{
 use cdr::{CdrLe, Infinite};
 use log::{error, info, warn};
 use nalgebra::{coordinates::XYZ, UnitQuaternion};
-use r2r::{
-    //geometry_msgs::msg::{Quaternion, Vector3},
-    sensor_msgs::msg::{
-        CameraInfo, Image as RosImage, /*Imu,*/ NavSatFix, NavSatStatus, PointCloud2,
-        PointField, RegionOfInterest,
-    },
-    std_msgs::msg::Header,
-};
 use std::{
     convert::Infallible,
     mem,
@@ -38,6 +30,7 @@ use std::{
     thread,
 };
 use zenoh::prelude::sync::*;
+use zenoh_ros_type::{sensor_msgs, std_msgs};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SensorType {
@@ -387,7 +380,7 @@ fn register_gnss(
 }
 
 fn camera_callback(
-    header: Header,
+    header: std_msgs::Header,
     image: CarlaImage,
     tx: &Sender<(MessageType, Vec<u8>)>,
 ) -> Result<()> {
@@ -402,7 +395,7 @@ fn camera_callback(
         .flat_map(|&Color { b, g, r, a }| [b, g, r, a])
         .collect();
 
-    let image_msg = RosImage {
+    let image_msg = sensor_msgs::Image {
         header,
         height: height as u32,
         width: width as u32,
@@ -420,7 +413,7 @@ fn camera_callback(
 }
 
 fn camera_info_callback(
-    header: Header,
+    header: std_msgs::Header,
     width: u32,
     height: u32,
     fov: f64,
@@ -431,18 +424,18 @@ fn camera_info_callback(
     let fx = width as f64 / (2.0 * (fov * std::f64::consts::PI / 360.0).tan());
     let fy = fx;
 
-    let camera_info = CameraInfo {
+    let camera_info = sensor_msgs::CameraInfo {
         header,
         width,
         height,
         distortion_model: String::from("plumb_bob"),
-        k: vec![fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0],
+        k: [fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0],
         d: vec![0.0, 0.0, 0.0, 0.0, 0.0],
-        r: vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-        p: vec![fx, 0.0, cx, 0.0, 0.0, fy, cy, 0.0, 0.0, 0.0, 1.0, 0.0],
+        r: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+        p: [fx, 0.0, cx, 0.0, 0.0, fy, cy, 0.0, 0.0, 0.0, 1.0, 0.0],
         binning_x: 0,
         binning_y: 0,
-        roi: RegionOfInterest {
+        roi: sensor_msgs::RegionOfInterest {
             x_offset: 0,
             y_offset: 0,
             height: 0,
@@ -459,7 +452,7 @@ fn camera_info_callback(
 }
 
 fn lidar_callback(
-    header: Header,
+    header: std_msgs::Header,
     measure: LidarMeasurement,
     tx: &Sender<(MessageType, Vec<u8>)>,
 ) -> Result<()> {
@@ -481,32 +474,32 @@ fn lidar_callback(
         .collect();
     let row_step = data.len() as u32;
     let fields = vec![
-        PointField {
+        sensor_msgs::PointField {
             name: "x".to_string(),
             offset: 0,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
-        PointField {
+        sensor_msgs::PointField {
             name: "y".to_string(),
             offset: 4,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
-        PointField {
+        sensor_msgs::PointField {
             name: "z".to_string(),
             offset: 8,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
-        PointField {
+        sensor_msgs::PointField {
             name: "intensity".to_string(),
             offset: 12,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
     ];
-    let lidar_msg = PointCloud2 {
+    let lidar_msg = sensor_msgs::PointCloud2 {
         header,
         height: 1,
         width: lidar_data.len() as u32,
@@ -525,7 +518,7 @@ fn lidar_callback(
 }
 
 fn senmatic_lidar_callback(
-    header: Header,
+    header: std_msgs::Header,
     measure: SemanticLidarMeasurement,
     tx: &Sender<(MessageType, Vec<u8>)>,
 ) -> Result<()> {
@@ -557,44 +550,44 @@ fn senmatic_lidar_callback(
         .flatten()
         .collect();
     let fields = vec![
-        PointField {
+        sensor_msgs::PointField {
             name: "x".to_string(),
             offset: 0,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
-        PointField {
+        sensor_msgs::PointField {
             name: "y".to_string(),
             offset: 4,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
-        PointField {
+        sensor_msgs::PointField {
             name: "z".to_string(),
             offset: 8,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
-        PointField {
+        sensor_msgs::PointField {
             name: "cos_inc_angle".to_string(),
             offset: 12,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
-        PointField {
+        sensor_msgs::PointField {
             name: "object_idx".to_string(),
             offset: 16,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
-        PointField {
+        sensor_msgs::PointField {
             name: "object_tag".to_string(),
             offset: 20,
             datatype: PointFieldType::FLOAT32 as u8,
             count: 1,
         },
     ];
-    let lidar_msg = PointCloud2 {
+    let lidar_msg = sensor_msgs::PointCloud2 {
         header,
         height: 1,
         width: lidar_data.len() as u32,
@@ -616,7 +609,7 @@ fn senmatic_lidar_callback(
 use serde_derive::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq)]
 struct IMU {
-    header: Header,
+    header: std_msgs::Header,
     orientation: [f64; 4],
     orientation_covariance: [f64; 9],
     angular_velocity: [f64; 3],
@@ -626,7 +619,7 @@ struct IMU {
 }
 
 fn imu_callback(
-    header: Header,
+    header: std_msgs::Header,
     measure: ImuMeasurement,
     tx: &Sender<(MessageType, Vec<u8>)>,
 ) -> Result<()> {
@@ -695,23 +688,23 @@ fn imu_callback(
 }
 
 fn gnss_callback(
-    header: Header,
+    header: std_msgs::Header,
     measure: GnssMeasurement,
     tx: &Sender<(MessageType, Vec<u8>)>,
 ) -> Result<()> {
-    let gnss_msg = NavSatFix {
+    let gnss_msg = sensor_msgs::NavSatFix {
         header,
         latitude: measure.latitude(),
         longitude: measure.longitude(),
         altitude: measure.attitude() + 17.0,
-        status: NavSatStatus {
+        status: sensor_msgs::NavSatStatus {
             status: GnssStatus::StatusSbasFix as i8,
             service: GnssService::ServiceGps as u16
                 | GnssService::ServiceGlonass as u16
                 | GnssService::ServiceCompass as u16
                 | GnssService::ServiceGalileo as u16,
         },
-        position_covariance: vec![0.0],
+        position_covariance: [0.0; 9],
         position_covariance_type: 0, // unknown type
     };
     let encoded = cdr::serialize::<_, _, CdrLe>(&gnss_msg, Infinite)?;

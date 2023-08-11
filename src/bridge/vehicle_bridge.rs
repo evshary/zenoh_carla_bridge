@@ -15,18 +15,15 @@ use carla_ackermann::{
 };
 use cdr::{CdrLe, Infinite};
 use log::{debug, info};
-use r2r::{
-    autoware_auto_control_msgs::msg::{
-        AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
-    },
-    autoware_auto_vehicle_msgs::msg::ControlModeReport,
-    autoware_auto_vehicle_msgs::msg::GearReport,
-    autoware_auto_vehicle_msgs::msg::SteeringReport,
-    autoware_auto_vehicle_msgs::msg::VelocityReport,
-    builtin_interfaces::msg::Time,
-};
 use std::sync::{atomic::Ordering, Arc};
 use zenoh::{prelude::sync::*, publication::Publisher, subscriber::Subscriber};
+use zenoh_ros_type::{
+    autoware_auto_control_msgs::{
+        AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
+    },
+    autoware_auto_vehicle_msgs::{ControlModeReport, GearReport, SteeringReport, VelocityReport},
+    builtin_interfaces::Time,
+};
 
 pub struct VehicleBridge<'a> {
     vehicle_name: String,
@@ -79,8 +76,20 @@ impl<'a> VehicleBridge<'a> {
         let speed = Arc::new(AtomicF32::new(0.0));
 
         // TODO: We can use default value here
-        let current_ackermann_cmd =
-            Arc::new(ArcSwap::from_pointee(AckermannControlCommand::default()));
+        let current_ackermann_cmd = Arc::new(ArcSwap::from_pointee(AckermannControlCommand {
+            stamp: Time { sec: 0, nanosec: 0 },
+            lateral: AckermannLateralCommand {
+                stamp: Time { sec: 0, nanosec: 0 },
+                steering_tire_angle: 0.0,
+                steering_tire_rotation_rate: 0.0,
+            },
+            longitudinal: LongitudinalCommand {
+                stamp: Time { sec: 0, nanosec: 0 },
+                speed: 0.0,
+                acceleration: 0.0,
+                jerk: 0.0,
+            },
+        }));
         let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
             .declare_subscriber(format!("{vehicle_name}/rt/control/command/control_cmd"))
