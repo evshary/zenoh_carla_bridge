@@ -2,9 +2,6 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("ROS error: {0}")]
-    Ros(#[from] r2r::Error),
-
     #[error("CDR error: {0}")]
     Cdr(#[from] cdr::Error),
 

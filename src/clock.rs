@@ -1,8 +1,9 @@
 use crate::error::Result;
 use cdr::{CdrLe, Infinite};
-use r2r::{builtin_interfaces::msg::Time, rosgraph_msgs::msg::Clock, Clock as r2rClock, ClockType};
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use zenoh::{prelude::sync::*, publication::Publisher};
+use zenoh_ros_type::{builtin_interfaces, rosgraph_msgs};
 
 pub struct SimulatorClock<'a> {
     publisher_clock: Publisher<'a>,
@@ -16,16 +17,21 @@ impl<'a> SimulatorClock<'a> {
 
     pub fn publish_clock(&self, timestamp: Option<f64>) -> Result<()> {
         let time = if let Some(sec) = timestamp {
-            Time {
+            builtin_interfaces::Time {
                 sec: sec.floor() as i32,
                 nanosec: (sec.fract() * 1000_000_000_f64) as u32,
             }
         } else {
-            let mut clock = r2rClock::create(ClockType::RosTime)?;
-            let duration = clock.get_now()?;
-            r2rClock::to_builtin_time(&duration)
+            // If there is no timestamp, use system time
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Unable to get current time");
+            builtin_interfaces::Time {
+                sec: now.as_secs() as i32,
+                nanosec: now.subsec_nanos(),
+            }
         };
-        let clock_msg = Clock { clock: time };
+        let clock_msg = rosgraph_msgs::Clock { clock: time };
         let encoded = cdr::serialize::<_, _, CdrLe>(&clock_msg, Infinite)?;
         self.publisher_clock.put(encoded).res()?;
         Ok(())

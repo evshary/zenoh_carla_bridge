@@ -16,9 +16,10 @@ clap = { version = "4.0.32", features = ["derive"] }
 log = "0.4.17"
 pretty_env_logger = "0.4.0"
 carla-ackermann = "0.1.0"
-r2r = "0.6.4"
 anyhow = { version = "1.0.68", features = ["backtrace"] }
 thiserror = "1.0.38"
 arc-swap = "1.6.0"
 nalgebra = "0.31.4"
 ndarray = "0.15.6"
+zenoh-ros-type = "0.3.1"
+#zenoh-ros-type = { git = "https://github.com/evshary/zenoh-ros-type", branch = "main" }
