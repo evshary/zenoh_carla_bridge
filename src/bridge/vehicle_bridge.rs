@@ -22,8 +22,9 @@ use zenoh_ros_type::{
         AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
     },
     autoware_auto_vehicle_msgs::{
-        hazard_lights_report, turn_indicators_report, ControlModeReport, GearReport,
-        HazardLightsReport, SteeringReport, TurnIndicatorsReport, VelocityReport,
+        control_mode_report, gear_report, hazard_lights_report, turn_indicators_report,
+        ControlModeReport, GearReport, HazardLightsReport, SteeringReport, TurnIndicatorsReport,
+        VelocityReport,
     },
     builtin_interfaces::Time,
 };
@@ -209,7 +210,11 @@ impl<'a> VehicleBridge<'a> {
                 sec: timestamp.floor() as i32,
                 nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
             },
-            report: if self.actor.control().reverse { 20 } else { 2 }, // TODO: Use enum (20: reverse, 2: drive)
+            report: if self.actor.control().reverse {
+                gear_report::REVERSE
+            } else {
+                gear_report::DRIVE
+            }, // TODO: Use enum (20: reverse, 2: drive)
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&gear_msg, Infinite)?;
         self.publisher_gear.put(encoded).res()?;
@@ -222,7 +227,7 @@ impl<'a> VehicleBridge<'a> {
                 sec: timestamp.floor() as i32,
                 nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
             },
-            mode: 1, // 1: AUTONOMOUS, 4: MANUAL. TODO: Now we don't have any way to switch these two modes.
+            mode: control_mode_report::AUTONOMOUS, // 1: AUTONOMOUS, 4: MANUAL. TODO: Now we don't have any way to switch these two modes.
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&control_msg, Infinite)?;
         self.publisher_control.put(encoded).res()?;
