@@ -23,8 +23,8 @@ use zenoh_ros_type::{
     },
     autoware_auto_vehicle_msgs::{
         control_mode_report, gear_report, hazard_lights_report, turn_indicators_report,
-        ControlModeReport, GearReport, HazardLightsReport, SteeringReport, TurnIndicatorsReport,
-        VelocityReport,
+        ControlModeReport, GearCommand, GearReport, HazardLightsReport, SteeringReport,
+        TurnIndicatorsReport, VelocityReport,
     },
     builtin_interfaces::Time,
 };
@@ -43,6 +43,7 @@ pub struct VehicleBridge<'a> {
     speed: Arc<AtomicF32>,
     controller: VehicleController,
     current_ackermann_cmd: Arc<ArcSwap<AckermannControlCommand>>,
+    current_gear: Arc<ArcSwap<u8>>,
 }
 
 impl<'a> VehicleBridge<'a> {
@@ -118,10 +119,17 @@ impl<'a> VehicleBridge<'a> {
                 cloned_cmd.store(Arc::new(cmd));
             })
             .res()?;
+        let current_gear = Arc::new(ArcSwap::from_pointee(gear_report::NONE));
+        let cloned_gear = current_gear.clone();
         let subscriber_gear_cmd = z_session
             .declare_subscriber(format!("{vehicle_name}/rt/control/command/gear_cmd"))
-            .callback_mut(move |_sample| {
-                // TODO: We don't this now, since reverse will be calculated while subscribing control_cmd
+            .callback_mut(move |sample| {
+                let result: Result<GearCommand, _> =
+                    cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
+                let Ok(cmd) = result else {
+                    return;
+                };
+                cloned_gear.store(Arc::new(cmd.command));
             })
             .res()?;
         let _subscriber_turnindicator = z_session
@@ -155,6 +163,7 @@ impl<'a> VehicleBridge<'a> {
             speed,
             controller,
             current_ackermann_cmd,
+            current_gear,
         })
     }
 
@@ -167,7 +176,12 @@ impl<'a> VehicleBridge<'a> {
         header.frame_id = String::from("base_link");
         let velocity_msg = VelocityReport {
             header,
-            longitudinal_velocity: velocity.norm(),
+            // Since the velocity report from Carla is always positive, we need to check reverse.
+            longitudinal_velocity: if self.actor.control().reverse {
+                -velocity.norm()
+            } else {
+                velocity.norm()
+            },
             lateral_velocity: 0.0,
             heading_rate: self
                 .actor
@@ -210,11 +224,7 @@ impl<'a> VehicleBridge<'a> {
                 sec: timestamp.floor() as i32,
                 nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
             },
-            report: if self.actor.control().reverse {
-                gear_report::REVERSE
-            } else {
-                gear_report::DRIVE
-            }, // TODO: Use enum (20: reverse, 2: drive)
+            report: **self.current_gear.load(),
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&gear_msg, Infinite)?;
         self.publisher_gear.put(encoded).res()?;
@@ -271,12 +281,24 @@ impl<'a> VehicleBridge<'a> {
                 },
             longitudinal:
                 LongitudinalCommand {
-                    speed,
-                    acceleration,
+                    mut speed,
+                    mut acceleration,
                     ..
                 },
             ..
         } = **self.current_ackermann_cmd.load();
+        match **self.current_gear.load() {
+            gear_report::DRIVE => { /* Do nothing */ }
+            gear_report::REVERSE => {
+                /* the speed from current_ackermann_cmd will be negative while reverse, so do nothing */
+            }
+            gear_report::PARK => {
+                /* Force the vehicle to stop */
+                speed = 0.0;
+                acceleration = 0.0;
+            }
+            _ => { /* Do nothing */ }
+        };
         debug!(
             "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
             speed,
