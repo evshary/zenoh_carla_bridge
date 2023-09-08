@@ -21,7 +21,11 @@ use zenoh_ros_type::{
     autoware_auto_control_msgs::{
         AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
     },
-    autoware_auto_vehicle_msgs::{ControlModeReport, GearReport, SteeringReport, VelocityReport},
+    autoware_auto_vehicle_msgs::{
+        control_mode_report, gear_report, hazard_lights_report, turn_indicators_report,
+        ControlModeReport, GearCommand, GearReport, HazardLightsReport, SteeringReport,
+        TurnIndicatorsReport, VelocityReport,
+    },
     builtin_interfaces::Time,
 };
 
@@ -34,9 +38,12 @@ pub struct VehicleBridge<'a> {
     publisher_steer: Publisher<'a>,
     publisher_gear: Publisher<'a>,
     publisher_control: Publisher<'a>,
+    publisher_turnindicator: Publisher<'a>,
+    publisher_hazardlight: Publisher<'a>,
     speed: Arc<AtomicF32>,
     controller: VehicleController,
     current_ackermann_cmd: Arc<ArcSwap<AckermannControlCommand>>,
+    current_gear: Arc<ArcSwap<u8>>,
 }
 
 impl<'a> VehicleBridge<'a> {
@@ -73,6 +80,16 @@ impl<'a> VehicleBridge<'a> {
         let publisher_control = z_session
             .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/control_mode"))
             .res()?;
+        let publisher_turnindicator = z_session
+            .declare_publisher(format!(
+                "{vehicle_name}/rt/vehicle/status/turn_indicators_status"
+            ))
+            .res()?;
+        let publisher_hazardlight = z_session
+            .declare_publisher(format!(
+                "{vehicle_name}/rt/vehicle/status/hazard_lights_status"
+            ))
+            .res()?;
         let speed = Arc::new(AtomicF32::new(0.0));
 
         // TODO: We can use default value here
@@ -102,10 +119,33 @@ impl<'a> VehicleBridge<'a> {
                 cloned_cmd.store(Arc::new(cmd));
             })
             .res()?;
+        let current_gear = Arc::new(ArcSwap::from_pointee(gear_report::NONE));
+        let cloned_gear = current_gear.clone();
         let subscriber_gear_cmd = z_session
             .declare_subscriber(format!("{vehicle_name}/rt/control/command/gear_cmd"))
+            .callback_mut(move |sample| {
+                let result: Result<GearCommand, _> =
+                    cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
+                let Ok(cmd) = result else {
+                    return;
+                };
+                cloned_gear.store(Arc::new(cmd.command));
+            })
+            .res()?;
+        let _subscriber_turnindicator = z_session
+            .declare_subscriber(format!(
+                "{vehicle_name}/rt/control/command/turn_indicators_cmd"
+            ))
             .callback_mut(move |_sample| {
-                // TODO: We don't this now, since reverse will be calculated while subscribing control_cmd
+                // TODO: Not support yet
+            })
+            .res()?;
+        let _subscriber_hazardlight = z_session
+            .declare_subscriber(format!(
+                "{vehicle_name}/rt/control/command/hazard_lights_cmd"
+            ))
+            .callback_mut(move |_sample| {
+                // TODO: Not support yet
             })
             .res()?;
 
@@ -118,9 +158,12 @@ impl<'a> VehicleBridge<'a> {
             publisher_steer,
             publisher_gear,
             publisher_control,
+            publisher_turnindicator,
+            publisher_hazardlight,
             speed,
             controller,
             current_ackermann_cmd,
+            current_gear,
         })
     }
 
@@ -133,7 +176,12 @@ impl<'a> VehicleBridge<'a> {
         header.frame_id = String::from("base_link");
         let velocity_msg = VelocityReport {
             header,
-            longitudinal_velocity: velocity.norm(),
+            // Since the velocity report from Carla is always positive, we need to check reverse.
+            longitudinal_velocity: if self.actor.control().reverse {
+                -velocity.norm()
+            } else {
+                velocity.norm()
+            },
             lateral_velocity: 0.0,
             heading_rate: self
                 .actor
@@ -176,7 +224,7 @@ impl<'a> VehicleBridge<'a> {
                 sec: timestamp.floor() as i32,
                 nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
             },
-            report: if self.actor.control().reverse { 20 } else { 2 }, // TODO: Use enum (20: reverse, 2: drive)
+            report: **self.current_gear.load(),
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&gear_msg, Infinite)?;
         self.publisher_gear.put(encoded).res()?;
@@ -189,10 +237,38 @@ impl<'a> VehicleBridge<'a> {
                 sec: timestamp.floor() as i32,
                 nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
             },
-            mode: 1, // 1: AUTONOMOUS, 4: MANUAL. TODO: Now we don't have any way to switch these two modes.
+            mode: control_mode_report::AUTONOMOUS, // 1: AUTONOMOUS, 4: MANUAL. TODO: Now we don't have any way to switch these two modes.
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&control_msg, Infinite)?;
         self.publisher_control.put(encoded).res()?;
+        Ok(())
+    }
+
+    fn pub_current_indicator(&mut self, timestamp: f64) -> Result<()> {
+        // TODO: Not support yet
+        let turnindicator_msg = TurnIndicatorsReport {
+            stamp: Time {
+                sec: timestamp.floor() as i32,
+                nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
+            },
+            report: turn_indicators_report::DISABLE,
+        };
+        let encoded = cdr::serialize::<_, _, CdrLe>(&turnindicator_msg, Infinite)?;
+        self.publisher_turnindicator.put(encoded).res()?;
+        Ok(())
+    }
+
+    fn pub_hazard_light(&mut self, timestamp: f64) -> Result<()> {
+        // TODO: Not support yet
+        let hazardlight_msg = HazardLightsReport {
+            stamp: Time {
+                sec: timestamp.floor() as i32,
+                nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
+            },
+            report: hazard_lights_report::DISABLE,
+        };
+        let encoded = cdr::serialize::<_, _, CdrLe>(&hazardlight_msg, Infinite)?;
+        self.publisher_hazardlight.put(encoded).res()?;
         Ok(())
     }
 
@@ -205,12 +281,24 @@ impl<'a> VehicleBridge<'a> {
                 },
             longitudinal:
                 LongitudinalCommand {
-                    speed,
-                    acceleration,
+                    mut speed,
+                    mut acceleration,
                     ..
                 },
             ..
         } = **self.current_ackermann_cmd.load();
+        match **self.current_gear.load() {
+            gear_report::DRIVE => { /* Do nothing */ }
+            gear_report::REVERSE => {
+                /* the speed from current_ackermann_cmd will be negative while reverse, so do nothing */
+            }
+            gear_report::PARK => {
+                /* Force the vehicle to stop */
+                speed = 0.0;
+                acceleration = 0.0;
+            }
+            _ => { /* Do nothing */ }
+        };
         debug!(
             "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
             speed,
@@ -267,6 +355,8 @@ impl<'a> ActorBridge for VehicleBridge<'a> {
         self.pub_current_steer(timestamp)?;
         self.pub_current_gear(timestamp)?;
         self.pub_current_control(timestamp)?;
+        self.pub_current_indicator(timestamp)?;
+        self.pub_hazard_light(timestamp)?;
         self.update_carla_control(elapsed_sec);
         Ok(())
     }

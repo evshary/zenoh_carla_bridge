@@ -3926,8 +3926,7 @@ dependencies = [
 [[package]]
 name = "zenoh-ros-type"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "107640591e6c5b8bf3ed2c69e552fc9cd439f65863d0e6ec8a6f0453ab59b8cb"
+source = "git+https://github.com/evshary/zenoh-ros-type?branch=main#0d0be3372aaae81a16edc56efe54de333372ed7f"
 dependencies = [
  "serde",
  "serde_derive",
