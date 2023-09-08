@@ -21,5 +21,5 @@ thiserror = "1.0.38"
 arc-swap = "1.6.0"
 nalgebra = "0.31.4"
 ndarray = "0.15.6"
-zenoh-ros-type = "0.3.1"
-#zenoh-ros-type = { git = "https://github.com/evshary/zenoh-ros-type", branch = "main" }
+#zenoh-ros-type = "0.3.1"
+zenoh-ros-type = { git = "https://github.com/evshary/zenoh-ros-type", branch = "main" }
