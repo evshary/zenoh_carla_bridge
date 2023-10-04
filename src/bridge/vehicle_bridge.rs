@@ -17,7 +17,11 @@ use zenoh_ros_type::{
     autoware_auto_control_msgs::{
         AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
     },
-    autoware_auto_vehicle_msgs::{ControlModeReport, GearReport, SteeringReport, VelocityReport},
+    autoware_auto_vehicle_msgs::{
+        control_mode_report, gear_report, hazard_lights_report, turn_indicators_report,
+        ControlModeReport, GearCommand, GearReport, HazardLightsReport, SteeringReport,
+        TurnIndicatorsReport, VelocityReport,
+    },
     builtin_interfaces::Time,
 };
 
@@ -30,6 +34,8 @@ pub struct VehicleBridge<'a> {
     publisher_steer: Publisher<'a>,
     publisher_gear: Publisher<'a>,
     publisher_control: Publisher<'a>,
+    publisher_turnindicator: Publisher<'a>,
+    publisher_hazardlight: Publisher<'a>,
     speed: Arc<AtomicF32>,
     current_ackermann_cmd: Arc<ArcSwap<AckermannControlCommand>>,
 }
@@ -65,6 +71,16 @@ impl<'a> VehicleBridge<'a> {
             .res()?;
         let publisher_control = z_session
             .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/control_mode"))
+            .res()?;
+        let publisher_turnindicator = z_session
+            .declare_publisher(format!(
+                "{vehicle_name}/rt/vehicle/status/turn_indicators_status"
+            ))
+            .res()?;
+        let publisher_hazardlight = z_session
+            .declare_publisher(format!(
+                "{vehicle_name}/rt/vehicle/status/hazard_lights_status"
+            ))
             .res()?;
         let speed = Arc::new(AtomicF32::new(0.0));
 
@@ -102,6 +118,23 @@ impl<'a> VehicleBridge<'a> {
             })
             .res()?;
 
+        let _subscriber_turnindicator = z_session
+            .declare_subscriber(format!(
+                "{vehicle_name}/rt/control/command/turn_indicators_cmd"
+            ))
+            .callback_mut(move |_sample| {
+                // TODO: Not support yet
+            })
+            .res()?;
+        let _subscriber_hazardlight = z_session
+            .declare_subscriber(format!(
+                "{vehicle_name}/rt/control/command/hazard_lights_cmd"
+            ))
+            .callback_mut(move |_sample| {
+                // TODO: Not support yet
+            })
+            .res()?;
+
         Ok(VehicleBridge {
             vehicle_name,
             actor,
@@ -111,6 +144,8 @@ impl<'a> VehicleBridge<'a> {
             publisher_steer,
             publisher_gear,
             publisher_control,
+            publisher_turnindicator,
+            publisher_hazardlight,
             speed,
             current_ackermann_cmd,
         })
@@ -188,6 +223,34 @@ impl<'a> VehicleBridge<'a> {
         Ok(())
     }
 
+    fn pub_current_indicator(&mut self, timestamp: f64) -> Result<()> {
+        // TODO: Not support yet
+        let turnindicator_msg = TurnIndicatorsReport {
+            stamp: Time {
+                sec: timestamp.floor() as i32,
+                nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
+            },
+            report: turn_indicators_report::DISABLE,
+        };
+        let encoded = cdr::serialize::<_, _, CdrLe>(&turnindicator_msg, Infinite)?;
+        self.publisher_turnindicator.put(encoded).res()?;
+        Ok(())
+    }
+
+    fn pub_hazard_light(&mut self, timestamp: f64) -> Result<()> {
+        // TODO: Not support yet
+        let hazardlight_msg = HazardLightsReport {
+            stamp: Time {
+                sec: timestamp.floor() as i32,
+                nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
+            },
+            report: hazard_lights_report::DISABLE,
+        };
+        let encoded = cdr::serialize::<_, _, CdrLe>(&hazardlight_msg, Infinite)?;
+        self.publisher_hazardlight.put(encoded).res()?;
+        Ok(())
+    }
+
     fn update_carla_control(&mut self, elapsed_sec: f64) {
         let AckermannControlCommand {
             lateral:
@@ -253,6 +316,8 @@ impl<'a> ActorBridge for VehicleBridge<'a> {
         self.pub_current_steer(timestamp)?;
         self.pub_current_gear(timestamp)?;
         self.pub_current_control(timestamp)?;
+        self.pub_current_indicator(timestamp)?;
+        self.pub_hazard_light(timestamp)?;
         self.update_carla_control(elapsed_sec);
         Ok(())
     }
