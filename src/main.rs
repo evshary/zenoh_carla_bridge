@@ -10,7 +10,6 @@ use carla::{client::Client, prelude::*, rpc::ActorId};
 use clap::Parser;
 use clock::SimulatorClock;
 use error::Error;
-use log::{debug, info};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -44,7 +43,7 @@ fn main() -> Result<(), Error> {
         zenoh_listen,
     } = Opts::parse();
 
-    info!("Running Carla Autoware Zenoh bridge...");
+    log::info!("Running Carla Autoware Zenoh bridge...");
     let mut config = Config::default();
     config
         .listen
@@ -66,7 +65,8 @@ fn main() -> Result<(), Error> {
 
     // Create clock publisher
     let mut last_time = Instant::now();
-    let simulator_clock = SimulatorClock::new(z_session.clone()).unwrap();
+    let simulator_clock =
+        SimulatorClock::new(z_session.clone()).expect("Unable to create simulator clock!");
 
     // Create thread for ticking
     let client_for_tick = Client::connect(&carla_address, carla_port, None);
@@ -93,28 +93,31 @@ fn main() -> Result<(), Error> {
             let deleted_ids = &prev_actor_ids - &cur_actor_ids;
 
             for id in added_ids {
-                let actor = actor_list.remove(&id).unwrap();
+                let actor = actor_list.remove(&id).expect("ID should be in the list!");
                 let bridge = match bridge::actor_bridge::create_bridge(z_session.clone(), actor) {
                     Ok(bridge) => bridge,
                     Err(Error::OwnerlessSensor { sensor_id }) => {
-                        debug!(
+                        log::debug!(
                             "Ignore the sensor with ID {sensor_id} is not attached to any vehicle."
                         );
                         continue;
                     }
                     Err(Error::Npc { npc_role_name }) => {
-                        debug!("Ignore NPC vehicle {npc_role_name}.");
+                        log::debug!("Ignore NPC vehicle {npc_role_name}.");
                         continue;
                     }
-                    Err(err) => return Err(err),
+                    Err(err) => {
+                        log::error!("Unexpected error: {:?}", err);
+                        return Err(err);
+                    }
                 };
                 bridge_list.insert(id, bridge);
-                info!("Actor {id} created");
+                log::info!("Actor {id} created");
             }
 
             for id in deleted_ids {
-                bridge_list.remove(&id).unwrap();
-                info!("Actor {id} deleted");
+                bridge_list.remove(&id).expect("ID should be in the list!");
+                log::info!("Actor {id} deleted");
                 run_step = false; // If there is actors removed, reget all the actor's list
             }
         }

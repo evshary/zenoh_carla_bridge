@@ -1,4 +1,3 @@
-use crate::error::Result;
 use std::time::{SystemTime, UNIX_EPOCH};
 use zenoh_ros_type::{builtin_interfaces, std_msgs};
 
@@ -6,7 +5,7 @@ pub fn is_bigendian() -> bool {
     cfg!(target_endian = "big")
 }
 
-pub fn create_ros_header(timestamp: Option<f64>) -> Result<std_msgs::Header> {
+pub fn create_ros_header(timestamp: Option<f64>) -> std_msgs::Header {
     let time = if let Some(sec) = timestamp {
         builtin_interfaces::Time {
             sec: sec.floor() as i32,
@@ -22,8 +21,8 @@ pub fn create_ros_header(timestamp: Option<f64>) -> Result<std_msgs::Header> {
             nanosec: now.subsec_nanos(),
         }
     };
-    Ok(std_msgs::Header {
+    std_msgs::Header {
         stamp: time,
         frame_id: "".to_string(),
-    })
+    }
 }

@@ -17,7 +17,6 @@ use carla::{
     },
 };
 use cdr::{CdrLe, Infinite};
-use log::{error, info, warn};
 use nalgebra::{coordinates::XYZ, UnitQuaternion};
 use std::{
     convert::Infallible,
@@ -83,7 +82,7 @@ impl SensorBridge {
             .attributes()
             .iter()
             .find(|attr| attr.id() == "role_name")
-            .expect("'role_name' attribute is missing")
+            .ok_or(Error::CarlaIssue("'role_name' attribute is missing"))?
             .value_string();
         let sensor_name = actor
             .attributes()
@@ -101,8 +100,10 @@ impl SensorBridge {
             vehicle_name = vehicle_name.replace("autoware_", "");
         }
 
-        info!("Detected a sensor '{sensor_name}' on '{vehicle_name}'");
-        let sensor_type: SensorType = sensor_type_id.parse().unwrap();
+        log::info!("Detected a sensor '{sensor_name}' on '{vehicle_name}'");
+        let sensor_type: SensorType = sensor_type_id
+            .parse()
+            .or(Err(Error::CarlaIssue("Unable to recognize sensor type")))?;
         let (tx, rx) = mpsc::channel();
 
         match sensor_type {
@@ -157,10 +158,10 @@ impl SensorBridge {
                 )?;
             }
             SensorType::Collision => {
-                warn!("Collision sensor is not supported yet");
+                log::warn!("Collision sensor is not supported yet");
             }
             SensorType::NotSupport => {
-                warn!("Unsupported sensor type '{sensor_type_id}'");
+                log::warn!("Unsupported sensor type '{sensor_type_id}'");
             }
         }
 
@@ -196,17 +197,17 @@ fn register_camera_rgb(
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
                 if let Err(_) = image_publisher.put(sensor_data).res() {
-                    error!("Failed to publish to {}", raw_key);
+                    log::error!("Failed to publish to {}", raw_key);
                 }
             }
             Ok((MessageType::InfoData, info_data)) => {
                 if let Err(_) = info_publisher.put(info_data).res() {
-                    error!("Failed to publish to {}", info_key);
+                    log::error!("Failed to publish to {}", info_key);
                 }
             }
             _ => {
                 // If tx is released, then the thread will stop
-                info!("Sensor actor thread for {} stop.", raw_key);
+                log::info!("Sensor actor thread for {} stop.", raw_key);
                 break;
             }
         }
@@ -215,35 +216,43 @@ fn register_camera_rgb(
         .attributes()
         .iter()
         .find(|attr| attr.id() == "image_size_x")
-        .unwrap()
+        .ok_or(Error::CarlaIssue("no image_size_x"))?
         .value()
-        .unwrap()
+        .ok_or(Error::CarlaIssue("no such ActorAttributeValueKind"))?
         .try_into_int()
-        .unwrap() as u32;
+        .or(Err(Error::CarlaIssue("Unable to transform into int")))? as u32;
     let height = actor
         .attributes()
         .iter()
         .find(|attr| attr.id() == "image_size_y")
-        .unwrap()
+        .ok_or(Error::CarlaIssue("no image_size_y"))?
         .value()
-        .unwrap()
+        .ok_or(Error::CarlaIssue("no such ActorAttributeValueKind"))?
         .try_into_int()
-        .unwrap() as u32;
+        .or(Err(Error::CarlaIssue("Unable to transform into int")))? as u32;
     let fov = actor
         .attributes()
         .iter()
         .find(|attr| attr.id() == "fov")
-        .unwrap()
+        .ok_or(Error::CarlaIssue("no fov"))?
         .value()
-        .unwrap()
+        .ok_or(Error::CarlaIssue("no such ActorAttributeValueKind"))?
         .try_into_f32()
-        .unwrap() as f64;
+        .or(Err(Error::CarlaIssue("Unable to transform into f32")))? as f64;
 
     actor.listen(move |data| {
-        let mut header = utils::create_ros_header(Some(data.timestamp())).unwrap();
+        let mut header = utils::create_ros_header(Some(data.timestamp()));
         header.frame_id = String::from("camera4/camera_link");
-        camera_callback(header.clone(), data.try_into().unwrap(), &tx).unwrap();
-        camera_info_callback(header, width, height, fov, &tx).unwrap();
+        if let Ok(data) = data.try_into() {
+            if let Err(e) = camera_callback(header.clone(), data, &tx) {
+                log::error!("Failed to call camera_callback: {:?}", e);
+            }
+            if let Err(e) = camera_info_callback(header, width, height, fov, &tx) {
+                log::error!("Failed to call camera_info_callback: {:?}", e);
+            }
+        } else {
+            log::error!("Failed to transform camera image");
+        }
     });
 
     Ok(())
@@ -263,20 +272,26 @@ fn register_lidar_raycast(
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
                 if let Err(_) = pcd_publisher.put(sensor_data).res() {
-                    error!("Failed to publish to {}", key);
+                    log::error!("Failed to publish to {}", key);
                 }
             }
             _ => {
                 // If tx is released, then the thread will stop
-                info!("Sensor actor thread for {} stop.", key);
+                log::info!("Sensor actor thread for {} stop.", key);
                 break;
             }
         }
     });
     actor.listen(move |data| {
-        let mut header = utils::create_ros_header(Some(data.timestamp())).unwrap();
+        let mut header = utils::create_ros_header(Some(data.timestamp()));
         header.frame_id = String::from("velodyne_top");
-        lidar_callback(header, data.try_into().unwrap(), &tx).unwrap();
+        if let Ok(data) = data.try_into() {
+            if let Err(e) = lidar_callback(header, data, &tx) {
+                log::error!("Failed to call lidar_callback: {:?}", e);
+            }
+        } else {
+            log::error!("Failed to transform lidar data");
+        }
     });
 
     Ok(())
@@ -296,20 +311,26 @@ fn register_lidar_raycast_semantic(
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
                 if let Err(_) = pcd_publisher.put(sensor_data).res() {
-                    error!("Failed to publish to {}", key);
+                    log::error!("Failed to publish to {}", key);
                 }
             }
             _ => {
                 // If tx is released, then the thread will stop
-                info!("Sensor actor thread for {} stop.", key);
+                log::info!("Sensor actor thread for {} stop.", key);
                 break;
             }
         }
     });
     actor.listen(move |data| {
-        let mut header = utils::create_ros_header(Some(data.timestamp())).unwrap();
+        let mut header = utils::create_ros_header(Some(data.timestamp()));
         header.frame_id = String::from("velodyne_top");
-        senmatic_lidar_callback(header, data.try_into().unwrap(), &tx).unwrap();
+        if let Ok(data) = data.try_into() {
+            if let Err(e) = sematic_lidar_callback(header, data, &tx) {
+                log::error!("Failed to call sematic_lidar_callback: {:?}", e);
+            }
+        } else {
+            log::error!("Failed to transform lidar data");
+        }
     });
 
     Ok(())
@@ -329,20 +350,26 @@ fn register_imu(
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
                 if let Err(_) = imu_publisher.put(sensor_data).res() {
-                    error!("Failed to publish to {}", key);
+                    log::error!("Failed to publish to {}", key);
                 }
             }
             _ => {
                 // If tx is released, then the thread will stop
-                info!("Sensor actor thread for {} stop.", key);
+                log::info!("Sensor actor thread for {} stop.", key);
                 break;
             }
         }
     });
     actor.listen(move |data| {
-        let mut header = utils::create_ros_header(Some(data.timestamp())).unwrap();
+        let mut header = utils::create_ros_header(Some(data.timestamp()));
         header.frame_id = String::from("tamagawa/imu_link");
-        imu_callback(header, data.try_into().unwrap(), &tx).unwrap();
+        if let Ok(data) = data.try_into() {
+            if let Err(e) = imu_callback(header, data, &tx) {
+                log::error!("Failed to call imu_callback: {:?}", e);
+            }
+        } else {
+            log::error!("Failed to transform IMU data");
+        }
     });
     Ok(())
 }
@@ -361,20 +388,26 @@ fn register_gnss(
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
                 if let Err(_) = gnss_publisher.put(sensor_data).res() {
-                    error!("Failed to publish to {}", key);
+                    log::error!("Failed to publish to {}", key);
                 }
             }
             _ => {
                 // If tx is released, then the thread will stop
-                info!("Sensor actor thread for {} stop.", key);
+                log::info!("Sensor actor thread for {} stop.", key);
                 break;
             }
         }
     });
     actor.listen(move |data| {
-        let mut header = utils::create_ros_header(Some(data.timestamp())).unwrap();
+        let mut header = utils::create_ros_header(Some(data.timestamp()));
         header.frame_id = String::from("gnss_link");
-        gnss_callback(header, data.try_into().unwrap(), &tx).unwrap();
+        if let Ok(data) = data.try_into() {
+            if let Err(e) = gnss_callback(header, data, &tx) {
+                log::error!("Failed to call gnss_callback: {:?}", e);
+            }
+        } else {
+            log::error!("Failed to transform GNSS data");
+        }
     });
     Ok(())
 }
@@ -406,9 +439,8 @@ fn camera_callback(
     };
 
     let encoded = cdr::serialize::<_, _, CdrLe>(&image_msg, Infinite)?;
-    if let Err(_) = tx.send((MessageType::SensorData, encoded)) {
-        error!("Failed to send message");
-    }
+    tx.send((MessageType::SensorData, encoded))
+        .or(Err(Error::Communication("Unable to send camera data")))?;
     Ok(())
 }
 
@@ -445,9 +477,8 @@ fn camera_info_callback(
     };
 
     let encoded = cdr::serialize::<_, _, CdrLe>(&camera_info, Infinite)?;
-    if let Err(_) = tx.send((MessageType::InfoData, encoded)) {
-        error!("Failed to send message");
-    }
+    tx.send((MessageType::InfoData, encoded))
+        .or(Err(Error::Communication("Unable to send camera info data")))?;
     Ok(())
 }
 
@@ -511,13 +542,12 @@ fn lidar_callback(
         is_dense: true,
     };
     let encoded = cdr::serialize::<_, _, CdrLe>(&lidar_msg, Infinite)?;
-    if let Err(_) = tx.send((MessageType::SensorData, encoded)) {
-        error!("Failed to send message");
-    }
+    tx.send((MessageType::SensorData, encoded))
+        .or(Err(Error::Communication("Unable to send lidar data")))?;
     Ok(())
 }
 
-fn senmatic_lidar_callback(
+fn sematic_lidar_callback(
     header: std_msgs::Header,
     measure: SemanticLidarMeasurement,
     tx: &Sender<(MessageType, Vec<u8>)>,
@@ -599,9 +629,8 @@ fn senmatic_lidar_callback(
         is_dense: true,
     };
     let encoded = cdr::serialize::<_, _, CdrLe>(&lidar_msg, Infinite)?;
-    if let Err(_) = tx.send((MessageType::SensorData, encoded)) {
-        error!("Failed to send message");
-    }
+    tx.send((MessageType::SensorData, encoded))
+        .or(Err(Error::Communication("Unable to send lidar data")))?;
     Ok(())
 }
 
@@ -681,9 +710,8 @@ fn imu_callback(
     */
 
     let encoded = cdr::serialize::<_, _, CdrLe>(&imu_msg, Infinite)?;
-    if let Err(_) = tx.send((MessageType::SensorData, encoded)) {
-        error!("Failed to send message");
-    }
+    tx.send((MessageType::SensorData, encoded))
+        .or(Err(Error::Communication("Unable to send IMU data")))?;
     Ok(())
 }
 
@@ -708,9 +736,8 @@ fn gnss_callback(
         position_covariance_type: 0, // unknown type
     };
     let encoded = cdr::serialize::<_, _, CdrLe>(&gnss_msg, Infinite)?;
-    if let Err(_) = tx.send((MessageType::SensorData, encoded)) {
-        error!("Failed to send message");
-    }
+    tx.send((MessageType::SensorData, encoded))
+        .or(Err(Error::Communication("Unable to send GNSS data")))?;
     Ok(())
 }
 
@@ -721,12 +748,12 @@ fn generate_sensor_name(actor: &Sensor) -> String {
 
 impl Drop for SensorBridge {
     fn drop(&mut self) {
-        info!("Remove sensor name {}", self.sensor_name);
+        log::info!("Remove sensor name {}", self.sensor_name);
         if self.sensor_type != SensorType::Collision && self.sensor_type != SensorType::NotSupport {
             // Not sure why the tx doesn't release in sensor callback, so rx can't use RecvErr to close the thread
             // I create another message type to notify the thread to close
             if let Err(_) = self.tx.send((MessageType::StopThread, vec![])) {
-                error!("Unable to stop the thread")
+                log::error!("Unable to stop the thread")
             }
         }
     }
