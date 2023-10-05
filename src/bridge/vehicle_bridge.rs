@@ -14,7 +14,6 @@ use carla_ackermann::{
     VehicleController,
 };
 use cdr::{CdrLe, Infinite};
-use log::{debug, info};
 use std::sync::{atomic::Ordering, Arc};
 use zenoh::{prelude::sync::*, publication::Publisher, subscriber::Subscriber};
 use zenoh_ros_type::{
@@ -52,7 +51,7 @@ impl<'a> VehicleBridge<'a> {
             .attributes()
             .iter()
             .find(|attr| attr.id() == "role_name")
-            .unwrap()
+            .ok_or(Error::CarlaIssue("Unable to find role_name in the vehicle"))?
             .value_string();
 
         // Remove "autoware_" in role name
@@ -64,7 +63,7 @@ impl<'a> VehicleBridge<'a> {
             vehicle_name = vehicle_name.replace("autoware_", "");
         }
 
-        info!("Detect a vehicle {vehicle_name}");
+        log::info!("Detect a vehicle {vehicle_name}");
         let physics_control = actor.physics_control();
         let controller = VehicleController::from_physics_control(&physics_control, None);
 
@@ -172,7 +171,7 @@ impl<'a> VehicleBridge<'a> {
         let velocity = self.actor.velocity();
         //let angular_velocity = vehicle_actor.angular_velocity();
         //let accel = vehicle_actor.acceleration();
-        let mut header = utils::create_ros_header(Some(timestamp)).unwrap();
+        let mut header = utils::create_ros_header(Some(timestamp));
         header.frame_id = String::from("base_link");
         let velocity_msg = VelocityReport {
             header,
@@ -189,7 +188,7 @@ impl<'a> VehicleBridge<'a> {
                 .to_radians()
                 * -1.0,
         };
-        debug!(
+        log::debug!(
             "Carla => Autoware: current velocity: {}",
             velocity_msg.longitudinal_velocity
         );
@@ -299,7 +298,7 @@ impl<'a> VehicleBridge<'a> {
             }
             _ => { /* Do nothing */ }
         };
-        debug!(
+        log::debug!(
             "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
             speed,
             acceleration,
@@ -312,9 +311,11 @@ impl<'a> VehicleBridge<'a> {
             speed: speed as f64,
             accel: acceleration as f64,
         });
-        debug!(
+        log::debug!(
             "Autoware => Carla: elapse_sec:{} current_speed:{} pitch_radians:{}",
-            elapsed_sec, current_speed, pitch_radians
+            elapsed_sec,
+            current_speed,
+            pitch_radians
         );
         let (
             Output {
@@ -328,9 +329,11 @@ impl<'a> VehicleBridge<'a> {
         ) = self
             .controller
             .step(elapsed_sec, current_speed as f64, pitch_radians as f64);
-        debug!(
+        log::debug!(
             "Autoware => Carla: throttle:{}, brake:{}, steer:{}",
-            throttle, brake, steer
+            throttle,
+            brake,
+            steer
         );
 
         self.actor.apply_control(&VehicleControl {
@@ -364,6 +367,6 @@ impl<'a> ActorBridge for VehicleBridge<'a> {
 
 impl<'a> Drop for VehicleBridge<'a> {
     fn drop(&mut self) {
-        info!("Remove vehicle name {}", self.vehicle_name());
+        log::info!("Remove vehicle name {}", self.vehicle_name());
     }
 }
