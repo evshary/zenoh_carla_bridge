@@ -63,7 +63,6 @@ fn main() -> Result<()> {
     let mut bridge_list: HashMap<ActorId, Box<dyn ActorBridge>> = HashMap::new();
 
     // Create clock publisher
-    let mut last_time = Instant::now();
     let simulator_clock =
         SimulatorClock::new(z_session.clone()).expect("Unable to create simulator clock!");
 
@@ -77,8 +76,9 @@ fn main() -> Result<()> {
         thread::sleep(Duration::from_millis(100));
     });
 
+    let mut bridge_step_time = Instant::now();
     loop {
-        let elapsed_time = last_time.elapsed();
+        let timer_50ms = Instant::now();
         {
             let mut actor_list: HashMap<ActorId, _> = world
                 .actors()
@@ -125,16 +125,21 @@ fn main() -> Result<()> {
             }
         }
 
+        let elapsed_time = bridge_step_time.elapsed();
         let sec = world.snapshot().timestamp().elapsed_seconds;
         bridge_list
             .values_mut()
             .try_for_each(|bridge| bridge.step(elapsed_time.as_secs_f64(), sec))?;
         simulator_clock.publish_clock(Some(sec))?;
+        bridge_step_time = Instant::now();
 
-        last_time = Instant::now();
         world.wait_for_tick();
 
         // Sleep here, since the elapsed_time should be larger than certain value or carla_ackermann will have wrong result.
-        thread::sleep(Duration::from_millis(50));
+        // Make sure every step is 50 ms
+        if Duration::from_millis(50) > timer_50ms.elapsed() {
+            let sleep_time = Duration::from_millis(50) - timer_50ms.elapsed();
+            thread::sleep(sleep_time);
+        }
     }
 }
