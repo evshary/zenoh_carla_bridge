@@ -1,7 +1,7 @@
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub type Result<T, E = BridgeError> = std::result::Result<T, E>;
 
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
+pub enum BridgeError {
     #[error("CDR error: {0}")]
     Cdr(#[from] cdr::Error),
 

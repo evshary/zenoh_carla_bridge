@@ -4,12 +4,11 @@ mod error;
 mod types;
 mod utils;
 
-use anyhow::Result;
 use bridge::actor_bridge::ActorBridge;
 use carla::{client::Client, prelude::*, rpc::ActorId};
 use clap::Parser;
 use clock::SimulatorClock;
-use error::Error;
+use error::BridgeError;
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -34,7 +33,7 @@ struct Opts {
     pub zenoh_listen: Vec<String>,
 }
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<(), BridgeError> {
     pretty_env_logger::init();
 
     let Opts {
@@ -96,13 +95,13 @@ fn main() -> Result<(), Error> {
                 let actor = actor_list.remove(&id).expect("ID should be in the list!");
                 let bridge = match bridge::actor_bridge::create_bridge(z_session.clone(), actor) {
                     Ok(bridge) => bridge,
-                    Err(Error::OwnerlessSensor { sensor_id }) => {
+                    Err(BridgeError::OwnerlessSensor { sensor_id }) => {
                         log::debug!(
                             "Ignore the sensor with ID {sensor_id} is not attached to any vehicle."
                         );
                         continue;
                     }
-                    Err(Error::Npc { npc_role_name }) => {
+                    Err(BridgeError::Npc { npc_role_name }) => {
                         log::debug!("Ignore NPC vehicle {npc_role_name}.");
                         continue;
                     }
