@@ -3957,7 +3957,7 @@ dependencies = [
 [[package]]
 name = "zenoh-ros-type"
 version = "0.3.1"
-source = "git+https://github.com/evshary/zenoh-ros-type?branch=main#0d0be3372aaae81a16edc56efe54de333372ed7f"
+source = "git+https://github.com/evshary/zenoh-ros-type?branch=main#c619770e09f0eb1679fff742492d5f4b5976d97d"
 dependencies = [
  "serde",
  "serde_derive",
