@@ -71,6 +71,10 @@ fn main() -> Result<()> {
     thread::spawn(move || loop {
         let mut world = client_for_tick.world();
         world.tick();
+        let sec = world.snapshot().timestamp().elapsed_seconds;
+        simulator_clock
+            .publish_clock(Some(sec))
+            .expect("Unable to publish clock");
         // 20 ticks for 1 simulated seconds, and tick every 0.1 real seconds
         // 1 simulated second = 2 real seconds
         thread::sleep(Duration::from_millis(100));
@@ -130,7 +134,6 @@ fn main() -> Result<()> {
         bridge_list
             .values_mut()
             .try_for_each(|bridge| bridge.step(elapsed_time.as_secs_f64(), sec))?;
-        simulator_clock.publish_clock(Some(sec))?;
         bridge_step_time = Instant::now();
 
         world.wait_for_tick();
