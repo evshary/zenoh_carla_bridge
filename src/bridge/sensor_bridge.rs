@@ -1,6 +1,7 @@
 use super::actor_bridge::ActorBridge;
 use crate::{
-    error::{Error, Result},
+    error::BridgeError,
+    error::Result,
     types::{GnssService, GnssStatus, PointFieldType},
     utils,
 };
@@ -78,11 +79,11 @@ impl SensorBridge {
 
         let mut vehicle_name = actor
             .parent()
-            .ok_or(Error::OwnerlessSensor { sensor_id })?
+            .ok_or(BridgeError::OwnerlessSensor { sensor_id })?
             .attributes()
             .iter()
             .find(|attr| attr.id() == "role_name")
-            .ok_or(Error::CarlaIssue("'role_name' attribute is missing"))?
+            .ok_or(BridgeError::CarlaIssue("'role_name' attribute is missing"))?
             .value_string();
         let sensor_name = actor
             .attributes()
@@ -93,7 +94,7 @@ impl SensorBridge {
 
         // Remove "autoware_" in role name
         if !vehicle_name.starts_with("autoware_") {
-            return Err(Error::Npc {
+            return Err(BridgeError::Npc {
                 npc_role_name: vehicle_name,
             });
         } else {
@@ -101,9 +102,9 @@ impl SensorBridge {
         }
 
         log::info!("Detected a sensor '{sensor_name}' on '{vehicle_name}'");
-        let sensor_type: SensorType = sensor_type_id
-            .parse()
-            .or(Err(Error::CarlaIssue("Unable to recognize sensor type")))?;
+        let sensor_type: SensorType = sensor_type_id.parse().or(Err(BridgeError::CarlaIssue(
+            "Unable to recognize sensor type",
+        )))?;
         let (tx, rx) = mpsc::channel();
 
         match sensor_type {
@@ -216,29 +217,29 @@ fn register_camera_rgb(
         .attributes()
         .iter()
         .find(|attr| attr.id() == "image_size_x")
-        .ok_or(Error::CarlaIssue("no image_size_x"))?
+        .ok_or(BridgeError::CarlaIssue("no image_size_x"))?
         .value()
-        .ok_or(Error::CarlaIssue("no such ActorAttributeValueKind"))?
+        .ok_or(BridgeError::CarlaIssue("no such ActorAttributeValueKind"))?
         .try_into_int()
-        .or(Err(Error::CarlaIssue("Unable to transform into int")))? as u32;
+        .or(Err(BridgeError::CarlaIssue("Unable to transform into int")))? as u32;
     let height = actor
         .attributes()
         .iter()
         .find(|attr| attr.id() == "image_size_y")
-        .ok_or(Error::CarlaIssue("no image_size_y"))?
+        .ok_or(BridgeError::CarlaIssue("no image_size_y"))?
         .value()
-        .ok_or(Error::CarlaIssue("no such ActorAttributeValueKind"))?
+        .ok_or(BridgeError::CarlaIssue("no such ActorAttributeValueKind"))?
         .try_into_int()
-        .or(Err(Error::CarlaIssue("Unable to transform into int")))? as u32;
+        .or(Err(BridgeError::CarlaIssue("Unable to transform into int")))? as u32;
     let fov = actor
         .attributes()
         .iter()
         .find(|attr| attr.id() == "fov")
-        .ok_or(Error::CarlaIssue("no fov"))?
+        .ok_or(BridgeError::CarlaIssue("no fov"))?
         .value()
-        .ok_or(Error::CarlaIssue("no such ActorAttributeValueKind"))?
+        .ok_or(BridgeError::CarlaIssue("no such ActorAttributeValueKind"))?
         .try_into_f32()
-        .or(Err(Error::CarlaIssue("Unable to transform into f32")))? as f64;
+        .or(Err(BridgeError::CarlaIssue("Unable to transform into f32")))? as f64;
 
     actor.listen(move |data| {
         let mut header = utils::create_ros_header(Some(data.timestamp()));
@@ -440,7 +441,9 @@ fn camera_callback(
 
     let encoded = cdr::serialize::<_, _, CdrLe>(&image_msg, Infinite)?;
     tx.send((MessageType::SensorData, encoded))
-        .or(Err(Error::Communication("Unable to send camera data")))?;
+        .or(Err(BridgeError::Communication(
+            "Unable to send camera data",
+        )))?;
     Ok(())
 }
 
@@ -478,7 +481,9 @@ fn camera_info_callback(
 
     let encoded = cdr::serialize::<_, _, CdrLe>(&camera_info, Infinite)?;
     tx.send((MessageType::InfoData, encoded))
-        .or(Err(Error::Communication("Unable to send camera info data")))?;
+        .or(Err(BridgeError::Communication(
+            "Unable to send camera info data",
+        )))?;
     Ok(())
 }
 
@@ -543,7 +548,7 @@ fn lidar_callback(
     };
     let encoded = cdr::serialize::<_, _, CdrLe>(&lidar_msg, Infinite)?;
     tx.send((MessageType::SensorData, encoded))
-        .or(Err(Error::Communication("Unable to send lidar data")))?;
+        .or(Err(BridgeError::Communication("Unable to send lidar data")))?;
     Ok(())
 }
 
@@ -630,7 +635,7 @@ fn sematic_lidar_callback(
     };
     let encoded = cdr::serialize::<_, _, CdrLe>(&lidar_msg, Infinite)?;
     tx.send((MessageType::SensorData, encoded))
-        .or(Err(Error::Communication("Unable to send lidar data")))?;
+        .or(Err(BridgeError::Communication("Unable to send lidar data")))?;
     Ok(())
 }
 
@@ -711,7 +716,7 @@ fn imu_callback(
 
     let encoded = cdr::serialize::<_, _, CdrLe>(&imu_msg, Infinite)?;
     tx.send((MessageType::SensorData, encoded))
-        .or(Err(Error::Communication("Unable to send IMU data")))?;
+        .or(Err(BridgeError::Communication("Unable to send IMU data")))?;
     Ok(())
 }
 
@@ -737,7 +742,7 @@ fn gnss_callback(
     };
     let encoded = cdr::serialize::<_, _, CdrLe>(&gnss_msg, Infinite)?;
     tx.send((MessageType::SensorData, encoded))
-        .or(Err(Error::Communication("Unable to send GNSS data")))?;
+        .or(Err(BridgeError::Communication("Unable to send GNSS data")))?;
     Ok(())
 }
 

@@ -1,8 +1,5 @@
 use super::actor_bridge::ActorBridge;
-use crate::{
-    error::{Error, Result},
-    utils,
-};
+use crate::{error::BridgeError, error::Result, utils};
 use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
 use carla::{
@@ -51,12 +48,14 @@ impl<'a> VehicleBridge<'a> {
             .attributes()
             .iter()
             .find(|attr| attr.id() == "role_name")
-            .ok_or(Error::CarlaIssue("Unable to find role_name in the vehicle"))?
+            .ok_or(BridgeError::CarlaIssue(
+                "Unable to find role_name in the vehicle",
+            ))?
             .value_string();
 
         // Remove "autoware_" in role name
         if !vehicle_name.starts_with("autoware_") {
-            return Err(Error::Npc {
+            return Err(BridgeError::Npc {
                 npc_role_name: vehicle_name,
             });
         } else {

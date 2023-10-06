@@ -108,9 +108,6 @@ name = "anyhow"
 version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b13c32d80ecc7ab747b80c3784bce54ee8a7a0cc4fbda9bf4cda2cf6fe90854"
-dependencies = [
- "backtrace",
-]
 
 [[package]]
 name = "approx"
@@ -4045,7 +4042,6 @@ dependencies = [
 name = "zenoh_carla_bridge"
 version = "0.10.0"
 dependencies = [
- "anyhow",
  "arc-swap",
  "atomic_float",
  "carla",
