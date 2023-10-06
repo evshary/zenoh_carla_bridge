@@ -1,7 +1,6 @@
 use super::actor_bridge::ActorBridge;
 use crate::{
-    error::BridgeError,
-    error::Result,
+    error::{BridgeError, Result},
     types::{GnssService, GnssStatus, PointFieldType},
     utils,
 };

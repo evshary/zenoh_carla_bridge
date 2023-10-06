@@ -8,7 +8,7 @@ use bridge::actor_bridge::ActorBridge;
 use carla::{client::Client, prelude::*, rpc::ActorId};
 use clap::Parser;
 use clock::SimulatorClock;
-use error::BridgeError;
+use error::{BridgeError, Result};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -33,7 +33,7 @@ struct Opts {
     pub zenoh_listen: Vec<String>,
 }
 
-fn main() -> Result<(), BridgeError> {
+fn main() -> Result<()> {
     pretty_env_logger::init();
 
     let Opts {
