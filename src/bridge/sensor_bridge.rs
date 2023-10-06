@@ -29,7 +29,7 @@ use std::{
     thread,
 };
 use zenoh::prelude::sync::*;
-use zenoh_ros_type::{sensor_msgs, std_msgs};
+use zenoh_ros_type::{geometry_msgs, sensor_msgs, std_msgs};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SensorType {
@@ -638,19 +638,6 @@ fn sematic_lidar_callback(
     Ok(())
 }
 
-/* TODO: Temporarily solution, since r2r generates wrong IMU message type */
-use serde_derive::{Deserialize, Serialize};
-#[derive(Serialize, Deserialize, PartialEq)]
-struct IMU {
-    header: std_msgs::Header,
-    orientation: [f64; 4],
-    orientation_covariance: [f64; 9],
-    angular_velocity: [f64; 3],
-    angular_velocity_covariance: [f64; 9],
-    linear_acceleration: [f64; 3],
-    linear_acceleration_covariance: [f64; 9],
-}
-
 fn imu_callback(
     header: std_msgs::Header,
     measure: ImuMeasurement,
@@ -661,57 +648,28 @@ fn imu_callback(
     let compass = measure.compass().to_radians();
     let orientation = UnitQuaternion::from_euler_angles(0.0, 0.0, -compass);
 
-    /*
-    TODO: We generates IMU message type by ourselves, since r2r views array as Vec.
-          Vec includes some header, so we can't send it directly.
-    */
-    let imu_msg = IMU {
+    let imu_msg = sensor_msgs::IMU {
         header,
-        orientation: [
-            /*x:*/ orientation.coords.data.0[0][3] as f64,
-            /*y:*/ orientation.coords.data.0[0][1] as f64,
-            /*z:*/ orientation.coords.data.0[0][0] as f64,
-            /*w:*/ orientation.coords.data.0[0][2] as f64,
-        ],
-        orientation_covariance: [0.0; 9],
-        angular_velocity: [
-            /*x:*/ -gyro[0] as f64,
-            /*y:*/ gyro[1] as f64,
-            /*z:*/ -gyro[2] as f64,
-        ],
-        angular_velocity_covariance: [0.0; 9],
-        linear_acceleration: [
-            /*x:*/ accel[0] as f64,
-            /*y:*/ -accel[1] as f64,
-            /*z:*/ accel[2] as f64,
-        ],
-        linear_acceleration_covariance: [0.0; 9],
-    };
-
-    /* Original IMU message
-    let imu_msg = Imu {
-        header,
-        orientation: Quaternion {
+        orientation: geometry_msgs::Quaternion {
             x: orientation.coords.data.0[0][3] as f64,
             y: orientation.coords.data.0[0][1] as f64,
             z: orientation.coords.data.0[0][0] as f64,
             w: orientation.coords.data.0[0][2] as f64,
         },
-        orientation_covariance: [0.0; 9].to_vec(),
-        angular_velocity: Vector3 {
+        orientation_covariance: [0.0; 9],
+        angular_velocity: geometry_msgs::Vector3 {
             x: -gyro[0] as f64,
             y: gyro[1] as f64,
             z: -gyro[2] as f64,
         },
-        angular_velocity_covariance: [0.0; 9].to_vec(),
-        linear_acceleration: Vector3 {
+        angular_velocity_covariance: [0.0; 9],
+        linear_acceleration: geometry_msgs::Vector3 {
             x: accel[0] as f64,
             y: -accel[1] as f64,
             z: accel[2] as f64,
         },
-        linear_acceleration_covariance: [0.0; 9].to_vec(),
+        linear_acceleration_covariance: [0.0; 9],
     };
-    */
 
     let encoded = cdr::serialize::<_, _, CdrLe>(&imu_msg, Infinite)?;
     tx.send((MessageType::SensorData, encoded))
