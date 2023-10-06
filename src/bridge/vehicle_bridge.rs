@@ -1,5 +1,8 @@
 use super::actor_bridge::ActorBridge;
-use crate::{error::BridgeError, error::Result, utils};
+use crate::{
+    error::{BridgeError, Result},
+    utils,
+};
 use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
 use carla::{
