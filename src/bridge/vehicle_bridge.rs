@@ -26,6 +26,7 @@ use zenoh_ros_type::{
         TurnIndicatorsReport, VelocityReport,
     },
     builtin_interfaces::Time,
+    tier4_control_msgs::{gate_mode_data, GateMode},
 };
 
 pub struct VehicleBridge<'a> {
@@ -33,6 +34,7 @@ pub struct VehicleBridge<'a> {
     actor: Vehicle,
     _subscriber_control_cmd: Subscriber<'a, ()>,
     _subscriber_gear_cmd: Subscriber<'a, ()>,
+    _subscriber_gate_mode: Subscriber<'a, ()>,
     publisher_velocity: Publisher<'a>,
     publisher_steer: Publisher<'a>,
     publisher_gear: Publisher<'a>,
@@ -43,6 +45,7 @@ pub struct VehicleBridge<'a> {
     controller: VehicleController,
     current_ackermann_cmd: Arc<ArcSwap<AckermannControlCommand>>,
     current_gear: Arc<ArcSwap<u8>>,
+    current_gate_mode: Arc<ArcSwap<GateMode>>,
 }
 
 impl<'a> VehicleBridge<'a> {
@@ -115,6 +118,7 @@ impl<'a> VehicleBridge<'a> {
                 let result: Result<AckermannControlCommand, _> =
                     cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
                 let Ok(cmd) = result else {
+                    log::error!("Unable to parse data from /control/command/control_cmd");
                     return;
                 };
                 cloned_cmd.store(Arc::new(cmd));
@@ -128,9 +132,26 @@ impl<'a> VehicleBridge<'a> {
                 let result: Result<GearCommand, _> =
                     cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
                 let Ok(cmd) = result else {
+                    log::error!("Unable to parse data from /control/command/gear_cmd");
                     return;
                 };
                 cloned_gear.store(Arc::new(cmd.command));
+            })
+            .res()?;
+        let current_gate_mode = Arc::new(ArcSwap::from_pointee(GateMode {
+            data: gate_mode_data::AUTO,
+        }));
+        let cloned_gate_mode = current_gate_mode.clone();
+        let subscriber_gate_mode = z_session
+            .declare_subscriber(format!("{vehicle_name}/rt/control/current_gate_mode"))
+            .callback_mut(move |sample| {
+                let result: Result<GateMode, _> =
+                    cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
+                let Ok(mode) = result else {
+                    log::error!("Unable to parse data from /control/current_gate_mode");
+                    return;
+                };
+                cloned_gate_mode.store(Arc::new(mode));
             })
             .res()?;
         let _subscriber_turnindicator = z_session
@@ -155,6 +176,7 @@ impl<'a> VehicleBridge<'a> {
             actor,
             _subscriber_control_cmd: subscriber_control_cmd,
             _subscriber_gear_cmd: subscriber_gear_cmd,
+            _subscriber_gate_mode: subscriber_gate_mode,
             publisher_velocity,
             publisher_steer,
             publisher_gear,
@@ -165,6 +187,7 @@ impl<'a> VehicleBridge<'a> {
             controller,
             current_ackermann_cmd,
             current_gear,
+            current_gate_mode,
         })
     }
 
@@ -233,12 +256,17 @@ impl<'a> VehicleBridge<'a> {
     }
 
     fn pub_current_control(&mut self, timestamp: f64) -> Result<()> {
+        let mode = if self.current_gate_mode.load().data == gate_mode_data::AUTO {
+            control_mode_report::AUTONOMOUS
+        } else {
+            control_mode_report::MANUAL
+        };
         let control_msg = ControlModeReport {
             stamp: Time {
                 sec: timestamp.floor() as i32,
                 nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
             },
-            mode: control_mode_report::AUTONOMOUS, // 1: AUTONOMOUS, 4: MANUAL. TODO: Now we don't have any way to switch these two modes.
+            mode,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&control_msg, Infinite)?;
         self.publisher_control.put(encoded).res()?;
