@@ -66,7 +66,7 @@ impl FromStr for SensorType {
 }
 
 pub struct SensorBridge {
-    vehicle_name: String,
+    _vehicle_name: String,
     sensor_type: SensorType,
     _actor: Sensor,
     sensor_name: String,
@@ -146,14 +146,12 @@ impl SensorBridge {
                 log::warn!("Collision sensor is not supported yet");
             }
             SensorType::NotSupport => {
-                let sensor_id = actor.id();
-                let sensor_type_id = actor.type_id();
-                log::warn!("Unsupported sensor type '{sensor_type_id}'");
+                log::warn!("Unsupported sensor type '{}'", actor.type_id());
             }
         }
 
         Ok(SensorBridge {
-            vehicle_name,
+            _vehicle_name: vehicle_name,
             sensor_type,
             _actor: actor,
             sensor_name,
