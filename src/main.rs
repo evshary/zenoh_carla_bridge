@@ -18,6 +18,9 @@ use std::{
 };
 use zenoh::prelude::sync::*;
 
+// The interval between ticks
+const CARLA_TICK_INTERVAL_MS: u64 = 50;
+
 #[derive(Debug, Clone, PartialEq, ValueEnum)]
 enum Mode {
     /// Using zenoh-bridge-dds
@@ -75,8 +78,8 @@ fn main() -> Result<()> {
     let mut world = client.world();
     // Carla settings (synchronous)
     let mut carla_settings = world.settings();
-    carla_settings.synchronous_mode = true;
-    carla_settings.fixed_delta_seconds = Some(0.05);
+    carla_settings.synchronous_mode = true; // Need to tick by ourselves
+    carla_settings.fixed_delta_seconds = Some(CARLA_TICK_INTERVAL_MS as f64 * 0.001); // Interval between ticks
     world.apply_settings(&carla_settings, Duration::from_millis(1000));
 
     // Create bridge list
@@ -95,16 +98,16 @@ fn main() -> Result<()> {
         simulator_clock
             .publish_clock(Some(sec))
             .expect("Unable to publish clock");
-        // 20 ticks for 1 simulated seconds, and tick every 0.1 real seconds
-        // 1 simulated second = 2 real seconds
-        thread::sleep(Duration::from_millis(100));
+        // Tick every 2 CARLA_TICK_INTERVAL_MS
+        // => 1 simulated second = 2 real seconds
+        thread::sleep(Duration::from_millis(CARLA_TICK_INTERVAL_MS * 2));
     });
 
     let mut autoware_list: HashMap<String, autoware::Autoware> = HashMap::new();
 
     let mut bridge_step_time = Instant::now();
     loop {
-        let timer_50ms = Instant::now();
+        let loop_timer = Instant::now();
         {
             let mut actor_list: HashMap<ActorId, _> = world
                 .actors()
@@ -187,9 +190,9 @@ fn main() -> Result<()> {
         world.wait_for_tick();
 
         // Sleep here, since the elapsed_time should be larger than certain value or carla_ackermann will have wrong result.
-        // Make sure every step is 50 ms
-        if Duration::from_millis(50) > timer_50ms.elapsed() {
-            let sleep_time = Duration::from_millis(50) - timer_50ms.elapsed();
+        // Make sure each loop should take longer than CARLA_TICK_INTERVAL_MS
+        if Duration::from_millis(CARLA_TICK_INTERVAL_MS) > loop_timer.elapsed() {
+            let sleep_time = Duration::from_millis(CARLA_TICK_INTERVAL_MS) - loop_timer.elapsed();
             thread::sleep(sleep_time);
         }
     }
