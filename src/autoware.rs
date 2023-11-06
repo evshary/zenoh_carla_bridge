@@ -49,7 +49,7 @@ impl Autoware {
             // Vehicle subscribe topic
             topic_control_cmd: prefix.clone() + "control/command/control_cmd",
             topic_gear_cmd: prefix.clone() + "control/command/gear_cmd",
-            topic_current_gate_mode: prefix.clone() + "control/command/current_gate_mode",
+            topic_current_gate_mode: prefix.clone() + "control/current_gate_mode",
             topic_turn_indicators_cmd: prefix.clone() + "control/command/turn_indicators_cmd",
             topic_hazard_lights_cmd: prefix.clone() + "control/command/hazard_lights_cmd",
             // Sensor publish topic
