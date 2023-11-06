@@ -1,5 +1,6 @@
-use super::actor_bridge::ActorBridge;
+use super::actor_bridge::{ActorBridge, BridgeType};
 use crate::{
+    autoware::Autoware,
     error::{BridgeError, Result},
     types::{GnssService, GnssStatus, PointFieldType},
     utils,
@@ -65,6 +66,7 @@ impl FromStr for SensorType {
 }
 
 pub struct SensorBridge {
+    vehicle_name: String,
     sensor_type: SensorType,
     _actor: Sensor,
     sensor_name: String,
@@ -72,7 +74,7 @@ pub struct SensorBridge {
 }
 
 impl SensorBridge {
-    pub fn new(z_session: Arc<Session>, actor: Sensor) -> Result<SensorBridge> {
+    pub fn get_bridge_type(actor: Sensor) -> Result<BridgeType> {
         let sensor_id = actor.id();
         let sensor_type_id = actor.type_id();
 
@@ -104,68 +106,54 @@ impl SensorBridge {
         let sensor_type: SensorType = sensor_type_id.parse().or(Err(BridgeError::CarlaIssue(
             "Unable to recognize sensor type",
         )))?;
+        Ok(BridgeType::BridgeTypeSensor(
+            vehicle_name,
+            sensor_type,
+            sensor_name,
+        ))
+    }
+    pub fn new(
+        z_session: Arc<Session>,
+        actor: Sensor,
+        bridge_type: BridgeType,
+        autoware: &Autoware,
+    ) -> Result<SensorBridge> {
+        let (vehicle_name, sensor_type, sensor_name) = match bridge_type {
+            BridgeType::BridgeTypeSensor(v, t, s) => (v, t, s),
+            _ => panic!("Should never happen!"),
+        };
+
         let (tx, rx) = mpsc::channel();
+        let key_list = autoware.get_sensors_key(sensor_type, &sensor_name);
 
         match sensor_type {
             SensorType::CameraRgb => {
-                register_camera_rgb(
-                    z_session,
-                    &actor,
-                    &vehicle_name,
-                    &sensor_name,
-                    tx.clone(),
-                    rx,
-                )?;
+                register_camera_rgb(z_session, &actor, key_list, tx.clone(), rx)?;
             }
             SensorType::LidarRayCast => {
-                register_lidar_raycast(
-                    z_session,
-                    &actor,
-                    &vehicle_name,
-                    &sensor_name,
-                    tx.clone(),
-                    rx,
-                )?;
+                register_lidar_raycast(z_session, &actor, key_list, tx.clone(), rx)?;
             }
             SensorType::LidarRayCastSemantic => {
-                register_lidar_raycast_semantic(
-                    z_session,
-                    &actor,
-                    &vehicle_name,
-                    &sensor_name,
-                    tx.clone(),
-                    rx,
-                )?;
+                register_lidar_raycast_semantic(z_session, &actor, key_list, tx.clone(), rx)?;
             }
             SensorType::Imu => {
-                register_imu(
-                    z_session,
-                    &actor,
-                    &vehicle_name,
-                    &sensor_name,
-                    tx.clone(),
-                    rx,
-                )?;
+                register_imu(z_session, &actor, key_list, tx.clone(), rx)?;
             }
             SensorType::Gnss => {
-                register_gnss(
-                    z_session,
-                    &actor,
-                    &vehicle_name,
-                    &sensor_name,
-                    tx.clone(),
-                    rx,
-                )?;
+                register_gnss(z_session, &actor, key_list, tx.clone(), rx)?;
             }
             SensorType::Collision => {
                 log::warn!("Collision sensor is not supported yet");
             }
             SensorType::NotSupport => {
+                let sensor_id = actor.id();
+                let sensor_type_id = actor.type_id();
                 log::warn!("Unsupported sensor type '{sensor_type_id}'");
             }
         }
 
         Ok(SensorBridge {
+            vehicle_name,
             sensor_type,
             _actor: actor,
             sensor_name,
@@ -183,13 +171,13 @@ impl ActorBridge for SensorBridge {
 fn register_camera_rgb(
     z_session: Arc<Session>,
     actor: &Sensor,
-    vehicle_name: &str,
-    sensor_name: &str,
+    key_list: Option<Vec<String>>,
     tx: Sender<(MessageType, Vec<u8>)>,
     rx: Receiver<(MessageType, Vec<u8>)>,
 ) -> Result<()> {
-    let raw_key = format!("{vehicle_name}/rt/sensing/camera/{sensor_name}/image_raw");
-    let info_key = format!("{vehicle_name}/rt/sensing/camera/{sensor_name}/camera_info");
+    let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
+    let raw_key = key_list[0].clone();
+    let info_key = key_list[1].clone();
 
     let image_publisher = z_session.declare_publisher(raw_key.clone()).res()?;
     let info_publisher = z_session.declare_publisher(info_key.clone()).res()?;
@@ -261,12 +249,12 @@ fn register_camera_rgb(
 fn register_lidar_raycast(
     z_session: Arc<Session>,
     actor: &Sensor,
-    vehicle_name: &str,
-    _sensor_name: &str,
+    key_list: Option<Vec<String>>,
     tx: Sender<(MessageType, Vec<u8>)>,
     rx: Receiver<(MessageType, Vec<u8>)>,
 ) -> Result<()> {
-    let key = format!("{vehicle_name}/rt/carla_pointcloud");
+    let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
+    let key = key_list[0].clone();
     let pcd_publisher = z_session.declare_publisher(key.clone()).res()?;
     thread::spawn(move || loop {
         match rx.recv() {
@@ -300,12 +288,12 @@ fn register_lidar_raycast(
 fn register_lidar_raycast_semantic(
     z_session: Arc<Session>,
     actor: &Sensor,
-    vehicle_name: &str,
-    _sensor_name: &str,
+    key_list: Option<Vec<String>>,
     tx: Sender<(MessageType, Vec<u8>)>,
     rx: Receiver<(MessageType, Vec<u8>)>,
 ) -> Result<()> {
-    let key = format!("{vehicle_name}/rt/carla_pointcloud");
+    let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
+    let key = key_list[0].clone();
     let pcd_publisher = z_session.declare_publisher(key.clone()).res()?;
     thread::spawn(move || loop {
         match rx.recv() {
@@ -339,12 +327,12 @@ fn register_lidar_raycast_semantic(
 fn register_imu(
     z_session: Arc<Session>,
     actor: &Sensor,
-    vehicle_name: &str,
-    sensor_name: &str,
+    key_list: Option<Vec<String>>,
     tx: Sender<(MessageType, Vec<u8>)>,
     rx: Receiver<(MessageType, Vec<u8>)>,
 ) -> Result<()> {
-    let key = format!("{vehicle_name}/rt/sensing/imu/{sensor_name}/imu_raw");
+    let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
+    let key = key_list[0].clone();
     let imu_publisher = z_session.declare_publisher(key.clone()).res()?;
     thread::spawn(move || loop {
         match rx.recv() {
@@ -377,12 +365,12 @@ fn register_imu(
 fn register_gnss(
     z_session: Arc<Session>,
     actor: &Sensor,
-    vehicle_name: &str,
-    sensor_name: &str,
+    key_list: Option<Vec<String>>,
     tx: Sender<(MessageType, Vec<u8>)>,
     rx: Receiver<(MessageType, Vec<u8>)>,
 ) -> Result<()> {
-    let key = format!("{vehicle_name}/rt/sensing/gnss/{sensor_name}/nav_sat_fix");
+    let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
+    let key = key_list[0].clone();
     let gnss_publisher = z_session.declare_publisher(key.clone()).res()?;
     thread::spawn(move || loop {
         match rx.recv() {

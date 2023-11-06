@@ -1,12 +1,13 @@
+mod autoware;
 mod bridge;
 mod clock;
 mod error;
 mod types;
 mod utils;
 
-use bridge::actor_bridge::ActorBridge;
+use bridge::actor_bridge::{ActorBridge, BridgeType};
 use carla::{client::Client, prelude::*, rpc::ActorId};
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use clock::SimulatorClock;
 use error::{BridgeError, Result};
 use std::{
@@ -17,8 +18,17 @@ use std::{
 };
 use zenoh::prelude::sync::*;
 
-/// Command line options
+#[derive(Debug, Clone, PartialEq, ValueEnum)]
+enum Mode {
+    /// Using zenoh-bridge-dds
+    DDS,
+    /// Using zenoh-bridge-ros2dds
+    ROS2,
+}
+
+/// Zenoh Carla bridge for Autoware
 #[derive(Debug, Clone, Parser)]
+#[clap(version, about)]
 struct Opts {
     /// Carla simulator address.
     #[clap(long, default_value = "127.0.0.1")]
@@ -31,6 +41,10 @@ struct Opts {
     /// Zenoh listen address.
     #[clap(long, default_value = "tcp/localhost:7447")]
     pub zenoh_listen: Vec<String>,
+
+    /// Select which kind of bridge you're using: zenoh-bridge-dds or zenoh-bridge-ros2dds.
+    #[clap(short, long, value_enum)]
+    mode: Option<Mode>,
 }
 
 fn main() -> Result<()> {
@@ -40,7 +54,13 @@ fn main() -> Result<()> {
         carla_address,
         carla_port,
         zenoh_listen,
+        mode,
     } = Opts::parse();
+
+    let mode = match mode {
+        Some(m) => m,
+        None => Mode::DDS,
+    };
 
     log::info!("Running Carla Autoware Zenoh bridge...");
     let mut config = Config::default();
@@ -80,6 +100,8 @@ fn main() -> Result<()> {
         thread::sleep(Duration::from_millis(100));
     });
 
+    let mut autoware_list: HashMap<String, autoware::Autoware> = HashMap::new();
+
     let mut bridge_step_time = Instant::now();
     loop {
         let timer_50ms = Instant::now();
@@ -96,8 +118,34 @@ fn main() -> Result<()> {
 
             for id in added_ids {
                 let actor = actor_list.remove(&id).expect("ID should be in the list!");
-                let bridge = match bridge::actor_bridge::create_bridge(z_session.clone(), actor) {
-                    Ok(bridge) => bridge,
+                let bridge = match bridge::actor_bridge::get_bridge_type(actor.clone()) {
+                    Ok(BridgeType::BridgeTypeVehicle(vehicle_name)) => {
+                        let aw = autoware_list.entry(vehicle_name.clone()).or_insert(
+                            autoware::Autoware::new(vehicle_name.clone(), mode == Mode::ROS2),
+                        );
+                        bridge::actor_bridge::create_bridge(
+                            z_session.clone(),
+                            actor,
+                            BridgeType::BridgeTypeVehicle(vehicle_name),
+                            aw,
+                        )?
+                    }
+                    Ok(BridgeType::BridgeTypeSensor(vehicle_name, sensor_type, sensor_name)) => {
+                        let aw = autoware_list.entry(vehicle_name.clone()).or_insert(
+                            autoware::Autoware::new(vehicle_name.clone(), mode == Mode::ROS2),
+                        );
+                        aw.add_sensors(sensor_type, sensor_name.clone());
+                        bridge::actor_bridge::create_bridge(
+                            z_session.clone(),
+                            actor,
+                            BridgeType::BridgeTypeSensor(vehicle_name, sensor_type, sensor_name),
+                            aw,
+                        )?
+                    }
+                    Ok(_) => {
+                        log::debug!("Ignore type which are not vehicle and sensor.");
+                        continue;
+                    }
                     Err(BridgeError::OwnerlessSensor { sensor_id }) => {
                         log::debug!(
                             "Ignore the sensor with ID {sensor_id} is not attached to any vehicle."
