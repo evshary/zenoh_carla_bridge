@@ -107,7 +107,7 @@ fn main() -> Result<()> {
 
     let mut bridge_step_time = Instant::now();
     loop {
-        let loop_timer = Instant::now();
+        //let loop_timer = Instant::now();
         {
             let mut actor_list: HashMap<ActorId, _> = world
                 .actors()
@@ -191,9 +191,9 @@ fn main() -> Result<()> {
 
         // Sleep here, since the elapsed_time should be larger than certain value or carla_ackermann will have wrong result.
         // Make sure each loop should take longer than CARLA_TICK_INTERVAL_MS
-        if Duration::from_millis(CARLA_TICK_INTERVAL_MS) > loop_timer.elapsed() {
-            let sleep_time = Duration::from_millis(CARLA_TICK_INTERVAL_MS) - loop_timer.elapsed();
-            thread::sleep(sleep_time);
-        }
+        //if Duration::from_millis(CARLA_TICK_INTERVAL_MS) > loop_timer.elapsed() {
+        //    let sleep_time = Duration::from_millis(CARLA_TICK_INTERVAL_MS) - loop_timer.elapsed();
+        //    thread::sleep(sleep_time);
+        //}
     }
 }
