@@ -1,5 +1,6 @@
-use super::actor_bridge::ActorBridge;
+use super::actor_bridge::{ActorBridge, BridgeType};
 use crate::{
+    autoware::Autoware,
     error::{BridgeError, Result},
     utils,
 };
@@ -49,7 +50,7 @@ pub struct VehicleBridge<'a> {
 }
 
 impl<'a> VehicleBridge<'a> {
-    pub fn new(z_session: Arc<Session>, actor: Vehicle) -> Result<VehicleBridge<'a>> {
+    pub fn get_bridge_type(actor: Vehicle) -> Result<BridgeType> {
         let mut vehicle_name = actor
             .attributes()
             .iter()
@@ -69,30 +70,40 @@ impl<'a> VehicleBridge<'a> {
         }
 
         log::info!("Detect a vehicle {vehicle_name}");
+
+        Ok(BridgeType::BridgeTypeVehicle(vehicle_name))
+    }
+
+    pub fn new(
+        z_session: Arc<Session>,
+        actor: Vehicle,
+        bridge_type: BridgeType,
+        autoware: &Autoware,
+    ) -> Result<VehicleBridge<'a>> {
+        let vehicle_name = match bridge_type {
+            BridgeType::BridgeTypeVehicle(v) => v,
+            _ => panic!("Should never happen!"),
+        };
         let physics_control = actor.physics_control();
         let controller = VehicleController::from_physics_control(&physics_control, None);
 
         let publisher_velocity = z_session
-            .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/velocity_status"))
+            .declare_publisher(autoware.topic_velocity_status.clone())
             .res()?;
         let publisher_steer = z_session
-            .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/steering_status"))
+            .declare_publisher(autoware.topic_steering_status.clone())
             .res()?;
         let publisher_gear = z_session
-            .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/gear_status"))
+            .declare_publisher(autoware.topic_gear_status.clone())
             .res()?;
         let publisher_control = z_session
-            .declare_publisher(format!("{vehicle_name}/rt/vehicle/status/control_mode"))
+            .declare_publisher(autoware.topic_control_mode.clone())
             .res()?;
         let publisher_turnindicator = z_session
-            .declare_publisher(format!(
-                "{vehicle_name}/rt/vehicle/status/turn_indicators_status"
-            ))
+            .declare_publisher(autoware.topic_turn_indicators_status.clone())
             .res()?;
         let publisher_hazardlight = z_session
-            .declare_publisher(format!(
-                "{vehicle_name}/rt/vehicle/status/hazard_lights_status"
-            ))
+            .declare_publisher(autoware.topic_hazard_lights_status.clone())
             .res()?;
         let speed = Arc::new(AtomicF32::new(0.0));
 
@@ -113,7 +124,7 @@ impl<'a> VehicleBridge<'a> {
         }));
         let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
-            .declare_subscriber(format!("{vehicle_name}/rt/control/command/control_cmd"))
+            .declare_subscriber(autoware.topic_control_cmd.clone())
             .callback_mut(move |sample| {
                 let result: Result<AckermannControlCommand, _> =
                     cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
@@ -127,7 +138,7 @@ impl<'a> VehicleBridge<'a> {
         let current_gear = Arc::new(ArcSwap::from_pointee(gear_report::NONE));
         let cloned_gear = current_gear.clone();
         let subscriber_gear_cmd = z_session
-            .declare_subscriber(format!("{vehicle_name}/rt/control/command/gear_cmd"))
+            .declare_subscriber(autoware.topic_gear_cmd.clone())
             .callback_mut(move |sample| {
                 let result: Result<GearCommand, _> =
                     cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
@@ -143,7 +154,7 @@ impl<'a> VehicleBridge<'a> {
         }));
         let cloned_gate_mode = current_gate_mode.clone();
         let subscriber_gate_mode = z_session
-            .declare_subscriber(format!("{vehicle_name}/rt/control/current_gate_mode"))
+            .declare_subscriber(autoware.topic_current_gate_mode.clone())
             .callback_mut(move |sample| {
                 let result: Result<GateMode, _> =
                     cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
@@ -155,17 +166,13 @@ impl<'a> VehicleBridge<'a> {
             })
             .res()?;
         let _subscriber_turnindicator = z_session
-            .declare_subscriber(format!(
-                "{vehicle_name}/rt/control/command/turn_indicators_cmd"
-            ))
+            .declare_subscriber(autoware.topic_turn_indicators_cmd.clone())
             .callback_mut(move |_sample| {
                 // TODO: Not support yet
             })
             .res()?;
         let _subscriber_hazardlight = z_session
-            .declare_subscriber(format!(
-                "{vehicle_name}/rt/control/command/hazard_lights_cmd"
-            ))
+            .declare_subscriber(autoware.topic_hazard_lights_cmd.clone())
             .callback_mut(move |_sample| {
                 // TODO: Not support yet
             })
