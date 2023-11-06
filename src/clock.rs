@@ -10,8 +10,9 @@ pub struct SimulatorClock<'a> {
 }
 
 impl<'a> SimulatorClock<'a> {
-    pub fn new(z_session: Arc<Session>) -> Result<SimulatorClock<'a>> {
-        let publisher_clock = z_session.declare_publisher("*/rt/clock").res()?;
+    pub fn new(z_session: Arc<Session>, ros2: bool) -> Result<SimulatorClock<'a>> {
+        let key = if ros2 { "*/clock" } else { "*/rt/clock" };
+        let publisher_clock = z_session.declare_publisher(key).res()?;
         Ok(SimulatorClock { publisher_clock })
     }
 

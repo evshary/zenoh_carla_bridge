@@ -83,8 +83,8 @@ fn main() -> Result<()> {
     let mut bridge_list: HashMap<ActorId, Box<dyn ActorBridge>> = HashMap::new();
 
     // Create clock publisher
-    let simulator_clock =
-        SimulatorClock::new(z_session.clone()).expect("Unable to create simulator clock!");
+    let simulator_clock = SimulatorClock::new(z_session.clone(), mode == Mode::ROS2)
+        .expect("Unable to create simulator clock!");
 
     // Create thread for ticking
     let client_for_tick = Client::connect(&carla_address, carla_port, None);
