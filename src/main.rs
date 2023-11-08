@@ -19,7 +19,8 @@ use std::{
 use zenoh::prelude::sync::*;
 
 // The interval between ticks
-const CARLA_TICK_INTERVAL_MS: u64 = 50;
+// TODO: If we set lower value, two vehicles don't work well.
+const CARLA_TICK_INTERVAL_MS: u64 = 70;
 
 #[derive(Debug, Clone, PartialEq, ValueEnum)]
 enum Mode {
