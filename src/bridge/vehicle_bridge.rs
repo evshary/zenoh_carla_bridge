@@ -65,9 +65,8 @@ impl<'a> VehicleBridge<'a> {
             return Err(BridgeError::Npc {
                 npc_role_name: vehicle_name,
             });
-        } else {
-            vehicle_name = vehicle_name.replace("autoware_", "");
         }
+        vehicle_name = vehicle_name.replace("autoware_", "");
 
         log::info!("Detect a vehicle {vehicle_name}");
 

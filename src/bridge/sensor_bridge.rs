@@ -98,9 +98,8 @@ impl SensorBridge {
             return Err(BridgeError::Npc {
                 npc_role_name: vehicle_name,
             });
-        } else {
-            vehicle_name = vehicle_name.replace("autoware_", "");
         }
+        vehicle_name = vehicle_name.replace("autoware_", "");
 
         log::info!("Detected a sensor '{sensor_name}' on '{vehicle_name}'");
         let sensor_type: SensorType = sensor_type_id.parse().or(Err(BridgeError::CarlaIssue(
