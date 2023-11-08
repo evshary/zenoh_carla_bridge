@@ -9,7 +9,7 @@ packages = [{include = "carla_agent"}]
 [tool.poetry.dependencies]
 python = "^3.8"
 pygame = "^2.1.2"
-carla = "0.9.13"
+carla = "0.9.14"
 numpy = "^1.24.1"
 
 

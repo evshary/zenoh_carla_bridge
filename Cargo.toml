@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 zenoh = "0.10.0-rc"
-carla = "0.6.0"
+carla = "0.10.0"
 serde = "1.0.152"
 serde_derive = "1.0.152"
 cdr = "0.2.4"
@@ -15,10 +15,9 @@ atomic_float = "0.1.0"
 clap = { version = "4.0.32", features = ["derive"] }
 log = "0.4.17"
 pretty_env_logger = "0.4.0"
-carla-ackermann = "0.1.0"
 thiserror = "1.0.38"
 arc-swap = "1.6.0"
-nalgebra = "0.31.4"
+nalgebra = "0.32.3"
 ndarray = "0.15.6"
 zenoh-ros-type = "0.3.3"
 #zenoh-ros-type = { git = "https://github.com/evshary/zenoh-ros-type", branch = "main" }
