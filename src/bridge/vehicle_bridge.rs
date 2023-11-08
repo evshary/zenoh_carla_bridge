@@ -299,7 +299,7 @@ impl<'a> VehicleBridge<'a> {
         Ok(())
     }
 
-    fn update_carla_control(&mut self, elapsed_sec: f64) {
+    fn update_carla_control(&mut self) {
         let AckermannControlCommand {
             lateral:
                 AckermannLateralCommand {
@@ -350,8 +350,7 @@ impl<'a> VehicleBridge<'a> {
                 jerk,
             });
         log::debug!(
-            "Autoware => Carla: elapse_sec:{} current_speed:{} pitch_radians:{}",
-            elapsed_sec,
+            "Autoware => Carla: current_speed:{} pitch_radians:{}",
             current_speed,
             pitch_radians
         );
@@ -363,14 +362,14 @@ impl<'a> VehicleBridge<'a> {
 }
 
 impl<'a> ActorBridge for VehicleBridge<'a> {
-    fn step(&mut self, elapsed_sec: f64, timestamp: f64) -> Result<()> {
+    fn step(&mut self, timestamp: f64) -> Result<()> {
         self.pub_current_velocity(timestamp)?;
         self.pub_current_steer(timestamp)?;
         self.pub_current_gear(timestamp)?;
         self.pub_current_control(timestamp)?;
         self.pub_current_indicator(timestamp)?;
         self.pub_hazard_light(timestamp)?;
-        self.update_carla_control(elapsed_sec);
+        self.update_carla_control();
         Ok(())
     }
 }

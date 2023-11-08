@@ -15,7 +15,7 @@ impl OtherActorBridge {
 }
 
 impl ActorBridge for OtherActorBridge {
-    fn step(&mut self, _elapsed_sec: f64, _timestamp: f64) -> Result<()> {
+    fn step(&mut self, _timestamp: f64) -> Result<()> {
         Ok(())
     }
 }

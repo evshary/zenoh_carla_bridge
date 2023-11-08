@@ -14,13 +14,13 @@ use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
     thread,
-    time::{Duration, Instant},
+    time::Duration,
 };
 use zenoh::prelude::sync::*;
 
 // The interval between ticks
 // TODO: If we set lower value, two vehicles don't work well.
-const CARLA_TICK_INTERVAL_MS: u64 = 70;
+const CARLA_TICK_INTERVAL_MS: u64 = 50;
 
 #[derive(Debug, Clone, PartialEq, ValueEnum)]
 enum Mode {
@@ -106,9 +106,7 @@ fn main() -> Result<()> {
 
     let mut autoware_list: HashMap<String, autoware::Autoware> = HashMap::new();
 
-    let mut bridge_step_time = Instant::now();
     loop {
-        //let loop_timer = Instant::now();
         {
             let mut actor_list: HashMap<ActorId, _> = world
                 .actors()
@@ -181,20 +179,11 @@ fn main() -> Result<()> {
             }
         }
 
-        let elapsed_time = bridge_step_time.elapsed();
         let sec = world.snapshot().timestamp().elapsed_seconds;
         bridge_list
             .values_mut()
-            .try_for_each(|bridge| bridge.step(elapsed_time.as_secs_f64(), sec))?;
-        bridge_step_time = Instant::now();
+            .try_for_each(|bridge| bridge.step(sec))?;
 
         world.wait_for_tick();
-
-        // Sleep here, since the elapsed_time should be larger than certain value or carla_ackermann will have wrong result.
-        // Make sure each loop should take longer than CARLA_TICK_INTERVAL_MS
-        //if Duration::from_millis(CARLA_TICK_INTERVAL_MS) > loop_timer.elapsed() {
-        //    let sleep_time = Duration::from_millis(CARLA_TICK_INTERVAL_MS) - loop_timer.elapsed();
-        //    thread::sleep(sleep_time);
-        //}
     }
 }

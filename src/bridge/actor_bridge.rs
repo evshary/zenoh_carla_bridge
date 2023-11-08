@@ -20,7 +20,7 @@ pub enum BridgeType {
 }
 
 pub trait ActorBridge {
-    fn step(&mut self, elapsed_sec: f64, timestamp: f64) -> Result<()>;
+    fn step(&mut self, timestamp: f64) -> Result<()>;
 }
 
 pub fn get_bridge_type(actor: Actor) -> Result<BridgeType> {
