@@ -2,7 +2,7 @@ import carla
 import weakref
 
 class LaneInvasionSensor(object):
-    def __init__(self, parent_actor, hud, sensor_name = 'lane_invasion'):
+    def __init__(self, parent_actor, hud, sensor_name = 'lane_invasion', trans = None):
         self.sensor = None
 
         # If the spawn object is not a vehicle, we cannot use the Lane Invasion Sensor
@@ -14,7 +14,8 @@ class LaneInvasionSensor(object):
             bp = world.get_blueprint_library().find('sensor.other.lane_invasion')
             bp.set_attribute('role_name', sensor_name)
 
-            trans = carla.Transform()
+            if trans == None:
+                trans = carla.Transform()
 
             self.sensor = world.spawn_actor(
                 bp,

@@ -3,7 +3,7 @@ import weakref
 import math
 
 class RadarSensor(object):
-    def __init__(self, parent_actor, sensor_name = 'radar'):
+    def __init__(self, parent_actor, sensor_name = 'radar', trans = None):
         self.sensor = None
         self._parent = parent_actor
         bound_x = 0.5 + self._parent.bounding_box.extent.x
@@ -20,8 +20,9 @@ class RadarSensor(object):
         bp.set_attribute('vertical_fov', str(20))
         bp.set_attribute('role_name', sensor_name)
 
-        trans = carla.Transform(carla.Location(x=bound_x + 0.05, z=bound_z+0.05),
-                                carla.Rotation(pitch=5)),
+        if trans == None:
+            trans = carla.Transform(carla.Location(x=bound_x + 0.05, z=bound_z+0.05),
+                                    carla.Rotation(pitch=5)),
 
         self.sensor = world.spawn_actor(
             bp,
