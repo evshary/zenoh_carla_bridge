@@ -5,7 +5,7 @@ import collections
 from ..utils import *
 
 class CollisionSensor(object):
-    def __init__(self, parent_actor, hud, sensor_name = 'collision'):
+    def __init__(self, parent_actor, hud, sensor_name = 'collision', trans = None):
         self.sensor = None
         self.history = []
         self._parent = parent_actor
@@ -15,7 +15,8 @@ class CollisionSensor(object):
         bp = world.get_blueprint_library().find('sensor.other.collision')
         bp.set_attribute('role_name', sensor_name)
 
-        trans = carla.Transform()
+        if trans == None:
+            trans = carla.Transform()
 
         self.sensor = world.spawn_actor(
             bp,
