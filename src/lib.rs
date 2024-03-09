@@ -1,7 +1,7 @@
 mod autoware;
 mod bridge;
 mod clock;
-mod error;
+pub mod error;
 mod types;
 mod utils;
 
@@ -23,7 +23,7 @@ use zenoh::prelude::sync::*;
 const CARLA_TICK_INTERVAL_MS: u64 = 70;
 
 #[derive(Debug, Clone, PartialEq, ValueEnum)]
-enum Mode {
+pub enum Mode {
     /// Using zenoh-bridge-dds
     DDS,
     /// Using zenoh-bridge-ros2dds
@@ -33,7 +33,7 @@ enum Mode {
 /// Zenoh Carla bridge for Autoware
 #[derive(Debug, Clone, Parser)]
 #[clap(version, about)]
-struct Opts {
+pub struct Opts {
     /// Carla simulator address.
     #[clap(long, default_value = "127.0.0.1")]
     pub carla_address: String,
@@ -48,14 +48,14 @@ struct Opts {
 
     /// Select which kind of bridge you're using: zenoh-bridge-dds or zenoh-bridge-ros2dds.
     #[clap(short, long, value_enum)]
-    mode: Option<Mode>,
+    pub mode: Option<Mode>,
 
     /// Zenoh Config
     #[clap(long, value_enum)]
-    zenoh_config: Option<String>,
+    pub zenoh_config: Option<String>,
 }
 
-fn main() -> Result<()> {
+pub fn run(opts: Opts) -> Result<()> {
     pretty_env_logger::init();
 
     let Opts {
@@ -64,7 +64,7 @@ fn main() -> Result<()> {
         zenoh_listen,
         mode,
         zenoh_config,
-    } = Opts::parse();
+    } = opts;
 
     let mode = match mode {
         Some(m) => m,
