@@ -1,7 +1,9 @@
 use crate::error::Result;
 use cdr::{CdrLe, Infinite};
-use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use zenoh::{prelude::sync::*, publication::Publisher};
 use zenoh_ros_type::{builtin_interfaces, rosgraph_msgs};
 
