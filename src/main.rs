@@ -63,7 +63,7 @@ fn main() -> Result<()> {
 
     let mode = match mode {
         Some(m) => m,
-        None => Mode::DDS,
+        None => Mode::ROS2,
     };
 
     log::info!("Running Carla Autoware Zenoh bridge...");
