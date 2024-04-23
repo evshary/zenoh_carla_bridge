@@ -49,6 +49,10 @@ struct Opts {
     /// Select which kind of bridge you're using: zenoh-bridge-dds or zenoh-bridge-ros2dds.
     #[clap(short, long, value_enum)]
     mode: Option<Mode>,
+
+    /// Zenoh Config
+    #[clap(long, value_enum)]
+    zenoh_config: Option<String>,
 }
 
 fn main() -> Result<()> {
@@ -59,6 +63,7 @@ fn main() -> Result<()> {
         carla_port,
         zenoh_listen,
         mode,
+        zenoh_config,
     } = Opts::parse();
 
     let mode = match mode {
@@ -67,7 +72,10 @@ fn main() -> Result<()> {
     };
 
     log::info!("Running Carla Autoware Zenoh bridge...");
-    let mut config = Config::default();
+    let mut config = match zenoh_config {
+        Some(conf_file) => Config::from_file(conf_file).unwrap(),
+        None => Config::default(),
+    };
     config
         .listen
         .endpoints
