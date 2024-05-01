@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 zenoh = "0.10.1-rc"
-carla = "0.10.1"
+carla = "0.11.1"
 serde = "1.0.188"
 serde_derive = "1.0.188"
 cdr = "0.2.4"
