@@ -52,6 +52,18 @@ RUST_LOG=c=info cargo run
 ros2 run autoware_manual_control keyboard_control 
 ```
 
+## Note
+
+If you want to build in Ubuntu 22.04, remember to switch compiler's version.
+
+```shell
+sudo apt install clang-12 libclang-12-dev
+export LLVM_CONFIG_PATH=/usr/bin/llvm-config-12
+export LIBCLANG_PATH=/usr/lib/llvm-12/lib
+export LIBCLANG_STATIC_PATH=/usr/lib/llvm-12/lib
+export CLANG_PATH=/usr/bin/clang-12
+```
+
 ## ROS topic
 
 ### Input topic
