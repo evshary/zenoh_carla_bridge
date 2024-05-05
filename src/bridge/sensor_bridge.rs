@@ -25,7 +25,7 @@ use std::{
     str::FromStr,
     sync::{
         mpsc::{self, Receiver, Sender},
-        Arc,
+        Arc, Mutex,
     },
     thread,
 };
@@ -178,22 +178,32 @@ fn register_camera_rgb(
 
     let image_publisher = z_session.declare_publisher(raw_key.clone()).res()?;
     let info_publisher = z_session.declare_publisher(info_key.clone()).res()?;
-    thread::spawn(move || loop {
-        match rx.recv() {
-            Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = image_publisher.put(sensor_data).res() {
-                    log::error!("Failed to publish to {}", raw_key);
+    thread::spawn(move || {
+        let mut cnt = 0;
+        let mut start = std::time::SystemTime::now();
+        loop {
+            match rx.recv() {
+                Ok((MessageType::SensorData, sensor_data)) => {
+                    cnt += 1;
+                    if let Err(_) = image_publisher.put(sensor_data).res() {
+                        log::error!("Failed to publish to {}", raw_key);
+                    }
+                    if start.elapsed().unwrap() >= std::time::Duration::from_secs(1) {
+                        log::info!("Frequency: {}", cnt);
+                        cnt = 0;
+                        start = std::time::SystemTime::now();
+                    }
                 }
-            }
-            Ok((MessageType::InfoData, info_data)) => {
-                if let Err(_) = info_publisher.put(info_data).res() {
-                    log::error!("Failed to publish to {}", info_key);
+                Ok((MessageType::InfoData, info_data)) => {
+                    if let Err(_) = info_publisher.put(info_data).res() {
+                        log::error!("Failed to publish to {}", info_key);
+                    }
                 }
-            }
-            _ => {
-                // If tx is released, then the thread will stop
-                log::info!("Sensor actor thread for {} stop.", raw_key);
-                break;
+                _ => {
+                    // If tx is released, then the thread will stop
+                    log::info!("Sensor actor thread for {} stop.", raw_key);
+                    break;
+                }
             }
         }
     });
@@ -397,6 +407,11 @@ fn register_gnss(
     Ok(())
 }
 
+static MYCNT: Mutex<u32> = Mutex::new(0);
+lazy_static::lazy_static! {
+    static ref S_TIME: Mutex<std::time::SystemTime> = Mutex::new(std::time::SystemTime::now());
+}
+
 fn camera_callback(
     header: std_msgs::Header,
     image: CarlaImage,
@@ -422,6 +437,12 @@ fn camera_callback(
         step: (width * 4) as u32,
         data,
     };
+    *MYCNT.lock().unwrap() += 1;
+    if S_TIME.lock().unwrap().elapsed().unwrap() >= std::time::Duration::from_secs(1) {
+        log::info!("tx Frequency: {}", MYCNT.lock().unwrap());
+        *MYCNT.lock().unwrap() = 0;
+        *S_TIME.lock().unwrap() = std::time::SystemTime::now();
+    }
 
     let encoded = cdr::serialize::<_, _, CdrLe>(&image_msg, Infinite)?;
     tx.send((MessageType::SensorData, encoded))

@@ -21,3 +21,4 @@ nalgebra = "0.32.3"
 ndarray = "0.15.6"
 zenoh-ros-type = "0.3.3"
 #zenoh-ros-type = { git = "https://github.com/evshary/zenoh-ros-type", branch = "main" }
+lazy_static = "1.4.0"
