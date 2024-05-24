@@ -4341,7 +4341,7 @@ dependencies = [
 
 [[package]]
 name = "zenoh_carla_bridge"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "arc-swap",
  "atomic_float",
