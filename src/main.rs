@@ -18,9 +18,8 @@ use std::{
 };
 use zenoh::prelude::sync::*;
 
-// The interval between ticks
-// TODO: If we set lower value, two vehicles don't work well.
-const CARLA_TICK_INTERVAL_MS: u64 = 50;
+// The default interval between ticks
+const DEFAULT_CARLA_TICK_INTERVAL_MS: &str = "50";
 
 #[derive(Debug, Clone, PartialEq, ValueEnum)]
 enum Mode {
@@ -53,6 +52,16 @@ struct Opts {
     /// Zenoh Config
     #[clap(long, value_enum)]
     zenoh_config: Option<String>,
+
+    /// Carla Tick interval (ms)
+    #[clap(long, default_value = DEFAULT_CARLA_TICK_INTERVAL_MS)]
+    pub tick: u64,
+
+    /// The multiplier to slow down simulated time
+    /// For example, if slowdown == 2, 1 simulated second = 2 real seconds
+    /// Suggest to set higher if the machine is not powerful enough
+    #[clap(long, default_value = "1")]
+    pub slowdown: u16,
 }
 
 fn main() -> Result<()> {
@@ -64,6 +73,8 @@ fn main() -> Result<()> {
         zenoh_listen,
         mode,
         zenoh_config,
+        tick,
+        slowdown,
     } = Opts::parse();
 
     let mode = match mode {
@@ -88,7 +99,7 @@ fn main() -> Result<()> {
     // Carla settings (synchronous)
     let mut carla_settings = world.settings();
     carla_settings.synchronous_mode = true; // Need to tick by ourselves
-    carla_settings.fixed_delta_seconds = Some(CARLA_TICK_INTERVAL_MS as f64 * 0.001); // Interval between ticks
+    carla_settings.fixed_delta_seconds = Some(tick as f64 * 0.001); // Interval between ticks
     world.apply_settings(&carla_settings, Duration::from_millis(1000));
 
     // Create bridge list
@@ -107,9 +118,7 @@ fn main() -> Result<()> {
         simulator_clock
             .publish_clock(Some(sec))
             .expect("Unable to publish clock");
-        // Tick every 2 CARLA_TICK_INTERVAL_MS
-        // => 1 simulated second = 2 real seconds
-        thread::sleep(Duration::from_millis(CARLA_TICK_INTERVAL_MS * 2));
+        thread::sleep(Duration::from_millis(tick * slowdown as u64));
     });
 
     let mut autoware_list: HashMap<String, autoware::Autoware> = HashMap::new();
