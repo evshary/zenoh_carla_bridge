@@ -1,10 +1,13 @@
 import re
+
 import carla
-from carla import Vector3D, Actor
+from carla import Actor, Vector3D
+
 
 def find_weather_presets():
     rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
-    name = lambda x: ' '.join(m.group(0) for m in rgx.finditer(x))
+    def name(x):
+        ' '.join(m.group(0) for m in rgx.finditer(x))
     presets = [x for x in dir(carla.WeatherParameters) if re.match('[A-Z].+', x)]
     return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]
 
@@ -33,7 +36,7 @@ def get_actor_blueprints(world, filter, generation):
         else:
             print("   Warning! Actor Generation is not valid. No actor will be spawned.")
             return []
-    except:
+    except Exception:
         print("   Warning! Actor Generation is not valid. No actor will be spawned.")
         return []
 

@@ -45,7 +45,9 @@ Use ARROWS or WASD keys for control.
 
 import argparse
 import logging
+
 from simulation.loop import game_loop
+
 
 def main():
     argparser = argparse.ArgumentParser(

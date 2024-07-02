@@ -1,5 +1,7 @@
-import carla
 import weakref
+
+import carla
+
 
 class LaneInvasionSensor(object):
     def __init__(self, parent_actor, hud, sensor_name = 'lane_invasion', trans = None):
@@ -14,7 +16,7 @@ class LaneInvasionSensor(object):
             bp = world.get_blueprint_library().find('sensor.other.lane_invasion')
             bp.set_attribute('role_name', sensor_name)
 
-            if trans == None:
+            if trans is None:
                 trans = carla.Transform()
 
             self.sensor = world.spawn_actor(

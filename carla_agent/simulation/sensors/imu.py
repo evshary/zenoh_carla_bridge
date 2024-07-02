@@ -1,6 +1,8 @@
-import carla
-import weakref
 import math
+import weakref
+
+import carla
+
 
 class IMUSensor(object):
     def __init__(self, parent_actor, sensor_name = 'imu', trans = None):
@@ -20,7 +22,7 @@ class IMUSensor(object):
         bp.set_attribute('noise_gyro_stddev_y', str(0.0))
         bp.set_attribute('noise_gyro_stddev_z', str(0.0))
 
-        if trans == None:
+        if trans is None:
             trans = carla.Transform(carla.Location(x=0.0, y=0.0, z=2.4),
                                     carla.Rotation(roll=0.0, pitch=0.0, yaw=270.0))
 

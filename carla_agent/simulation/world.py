@@ -1,19 +1,20 @@
-import sys
 import random
+import sys
 
-from .utils import *
-from . import config
+import carla
 
 from .sensors import (
     CameraManager,
-    RadarSensor,
+    CollisionSensor,
     GnssSensor,
     IMUSensor,
     LaneInvasionSensor,
-    CollisionSensor,
     LidarSensor,
+    RadarSensor,
     RgbCamera,
 )
+from .utils import find_weather_presets, get_actor_blueprints, get_actor_display_name
+
 
 class World(object):
     def __init__(self, carla_world, hud, args):

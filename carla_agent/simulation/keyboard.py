@@ -1,24 +1,25 @@
 import carla
-
 import pygame
 from pygame.locals import (
-    KMOD_CTRL,
-    KMOD_SHIFT,
     K_0,
     K_9,
     K_BACKQUOTE,
     K_BACKSPACE,
     K_COMMA,
     K_DOWN,
+    K_EQUALS,
     K_ESCAPE,
     K_F1,
     K_LEFT,
+    K_MINUS,
     K_PERIOD,
     K_RIGHT,
     K_SLASH,
     K_SPACE,
     K_TAB,
     K_UP,
+    KMOD_CTRL,
+    KMOD_SHIFT,
     K_a,
     K_b,
     K_c,
@@ -39,9 +40,8 @@ from pygame.locals import (
     K_w,
     K_x,
     K_z,
-    K_MINUS,
-    K_EQUALS,
 )
+
 
 class KeyboardControl(object):
     """Class that handles keyboard input."""

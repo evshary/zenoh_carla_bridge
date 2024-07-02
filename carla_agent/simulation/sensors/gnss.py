@@ -1,5 +1,7 @@
-import carla
 import weakref
+
+import carla
+
 
 class GnssSensor(object):
     def __init__(self, parent_actor, sensor_name = 'gnss', trans = None):
@@ -18,7 +20,7 @@ class GnssSensor(object):
         bp.set_attribute('noise_lat_bias', str(0.0))
         bp.set_attribute('noise_lon_bias', str(0.0))
 
-        if trans == None:
+        if trans is None:
             trans = carla.Transform(carla.Location(x=0.0, y=0.0, z=2.4))
 
         self.sensor = world.spawn_actor(
