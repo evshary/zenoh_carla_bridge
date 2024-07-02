@@ -1,11 +1,13 @@
 import time
+
 import carla
 import pygame
 
 from . import config
-from .world import World
 from .keyboard import KeyboardControl
 from .ui import HUD
+from .world import World
+
 
 def game_loop(args, doc):
     pygame.init()

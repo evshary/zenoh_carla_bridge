@@ -1,13 +1,15 @@
+import weakref
+
+import numpy as np
 from carla import (
     Actor,
-    Transform,
-    Location,
     AttachmentType,
     ColorConverter,
+    Location,
+    Transform,
 )
-import weakref
+
 from ..utils import get_actor_bounding_extent
-import numpy as np
 
 
 class RgbCamera(object):
@@ -23,7 +25,7 @@ class RgbCamera(object):
         bp = world.get_blueprint_library().find("sensor.camera.rgb")
         bp.set_attribute('role_name', sensor_name)
 
-        if trans == None:
+        if trans is None:
             trans = Transform(Location(x=+0.8 * bound_x, y=+0.0 * bound_y, z=1.3 * bound_z))
 
         sensor = world.spawn_actor(

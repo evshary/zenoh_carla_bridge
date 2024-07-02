@@ -1,7 +1,8 @@
-import carla
 import random
-from simulation import config
 
+import carla
+
+from simulation import config
 from simulation.sensors import (
     GnssSensor,
     IMUSensor,
@@ -45,10 +46,10 @@ def main():
         vehicle_actor.apply_physics_control(physics_control)
 
         # Setup sensors
-        gnss_sensor = GnssSensor(vehicle_actor, sensor_name='ublox')
-        imu_sensor = IMUSensor(vehicle_actor, sensor_name='tamagawa')
-        lidar_sensor = LidarSensor(vehicle_actor, sensor_name='top')
-        rgb_camera = RgbCamera(vehicle_actor, sensor_name='traffic_light')
+        _gnss_sensor = GnssSensor(vehicle_actor, sensor_name='ublox')
+        _imu_sensor = IMUSensor(vehicle_actor, sensor_name='tamagawa')
+        _lidar_sensor = LidarSensor(vehicle_actor, sensor_name='top')
+        _rgb_camera = RgbCamera(vehicle_actor, sensor_name='traffic_light')
 
     while True:
         sim_world.wait_for_tick()

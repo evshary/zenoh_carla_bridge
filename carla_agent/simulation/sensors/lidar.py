@@ -1,5 +1,7 @@
-from carla import Actor, Transform, Location, Rotation
 import weakref
+
+from carla import Actor, Location, Rotation, Transform
+
 
 class LidarSensor(object):
     callback = None
@@ -19,7 +21,7 @@ class LidarSensor(object):
         bp.set_attribute('dropoff_intensity_limit', str(0.8))
         bp.set_attribute('dropoff_zero_intensity', str(0.4))
 
-        if trans == None:
+        if trans is None:
             trans = Transform(Location(x=0.0, y=0.0, z=2.4),
                               Rotation(pitch=0.0, roll=0.0, yaw=270.0))
 

@@ -1,8 +1,11 @@
-import carla
-import weakref
-import math
 import collections
-from ..utils import *
+import math
+import weakref
+
+import carla
+
+from ..utils import get_actor_display_name
+
 
 class CollisionSensor(object):
     def __init__(self, parent_actor, hud, sensor_name = 'collision', trans = None):
@@ -15,7 +18,7 @@ class CollisionSensor(object):
         bp = world.get_blueprint_library().find('sensor.other.collision')
         bp.set_attribute('role_name', sensor_name)
 
-        if trans == None:
+        if trans is None:
             trans = carla.Transform()
 
         self.sensor = world.spawn_actor(

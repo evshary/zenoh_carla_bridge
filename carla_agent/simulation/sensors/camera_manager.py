@@ -1,6 +1,7 @@
-import pygame
-import carla
 import weakref
+
+import carla
+import pygame
 from carla import ColorConverter as cc
 
 try:

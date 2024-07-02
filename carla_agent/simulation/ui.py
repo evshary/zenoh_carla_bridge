@@ -2,9 +2,11 @@
 import datetime
 import math
 import os
+
+import carla
 import pygame
 
-from .utils import *
+from .utils import get_actor_display_name
 
 # ==============================================================================
 # -- HUD -----------------------------------------------------------------------
@@ -89,7 +91,8 @@ class HUD(object):
             'Number of vehicles: % 8d' % len(vehicles)]
         if len(vehicles) > 1:
             self._info_text += ['Nearby vehicles:']
-            distance = lambda l: math.sqrt((l.x - t.location.x)**2 + (l.y - t.location.y)**2 + (l.z - t.location.z)**2)
+            def distance(loc):
+                math.sqrt((loc.x - t.location.x)**2 + (loc.y - t.location.y)**2 + (loc.z - t.location.z)**2)
             vehicles = [(distance(x.get_location()), x) for x in vehicles if x.id != world.player.id]
             for d, vehicle in sorted(vehicles, key=lambda vehicles: vehicles[0]):
                 if d > 200.0:
