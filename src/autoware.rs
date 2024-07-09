@@ -131,7 +131,7 @@ impl Autoware {
                 }
             }
             SensorType::LidarRayCastSemantic => {
-                let lidar_key = self.list_lidar.get(sensor_name);
+                let lidar_key = self.list_lidar_semantics.get(sensor_name);
                 if lidar_key != None {
                     return Some(vec![lidar_key.unwrap().to_owned()]);
                 }
