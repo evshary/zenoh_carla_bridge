@@ -1,4 +1,3 @@
-
 import datetime
 import math
 import os
@@ -11,6 +10,7 @@ from .utils import get_actor_display_name
 # ==============================================================================
 # -- HUD -----------------------------------------------------------------------
 # ==============================================================================
+
 
 class HUD(object):
     def __init__(self, width, height, doc):
@@ -63,13 +63,14 @@ class HUD(object):
             'Simulation time: % 12s' % datetime.timedelta(seconds=int(self.simulation_time)),
             '',
             'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)),
-            u'Compass:% 17.0f\N{DEGREE SIGN} % 2s' % (compass, heading),
+            'Compass:% 17.0f\N{DEGREE SIGN} % 2s' % (compass, heading),
             'Accelero: (%5.1f,%5.1f,%5.1f)' % (world.imu_sensor.accelerometer),
             'Gyroscop: (%5.1f,%5.1f,%5.1f)' % (world.imu_sensor.gyroscope),
             'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (t.location.x, t.location.y)),
             'GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (world.gnss_sensor.lat, world.gnss_sensor.lon)),
             'Height:  % 18.0f m' % t.location.z,
-            '']
+            '',
+        ]
         if isinstance(c, carla.VehicleControl):
             self._info_text += [
                 ('Throttle:', c.throttle, 0.0, 1.0),
@@ -78,21 +79,17 @@ class HUD(object):
                 ('Reverse:', c.reverse),
                 ('Hand brake:', c.hand_brake),
                 ('Manual:', c.manual_gear_shift),
-                'Gear:        %s' % {-1: 'R', 0: 'N'}.get(c.gear, c.gear)]
+                'Gear:        %s' % {-1: 'R', 0: 'N'}.get(c.gear, c.gear),
+            ]
         elif isinstance(c, carla.WalkerControl):
-            self._info_text += [
-                ('Speed:', c.speed, 0.0, 5.556),
-                ('Jump:', c.jump)]
-        self._info_text += [
-            '',
-            'Collision:',
-            collision,
-            '',
-            'Number of vehicles: % 8d' % len(vehicles)]
+            self._info_text += [('Speed:', c.speed, 0.0, 5.556), ('Jump:', c.jump)]
+        self._info_text += ['', 'Collision:', collision, '', 'Number of vehicles: % 8d' % len(vehicles)]
         if len(vehicles) > 1:
             self._info_text += ['Nearby vehicles:']
+
             def distance(loc):
-                math.sqrt((loc.x - t.location.x)**2 + (loc.y - t.location.y)**2 + (loc.z - t.location.z)**2)
+                math.sqrt((loc.x - t.location.x) ** 2 + (loc.y - t.location.y) ** 2 + (loc.z - t.location.z) ** 2)
+
             vehicles = [(distance(x.get_location()), x) for x in vehicles if x.id != world.player.id]
             for d, vehicle in sorted(vehicles, key=lambda vehicles: vehicles[0]):
                 if d > 200.0:
@@ -152,6 +149,7 @@ class HUD(object):
 # -- FadingText ----------------------------------------------------------------
 # ==============================================================================
 
+
 class FadingText(object):
     def __init__(self, font, dim, pos):
         self.font = font
@@ -180,8 +178,10 @@ class FadingText(object):
 # -- HelpText ------------------------------------------------------------------
 # ==============================================================================
 
+
 class HelpText(object):
     """Helper class to handle text output using pygame"""
+
     def __init__(self, font, width, height, doc):
         lines = doc.split('\n')
         self.font = font

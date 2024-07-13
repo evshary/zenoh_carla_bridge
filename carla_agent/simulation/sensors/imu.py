@@ -5,7 +5,7 @@ import carla
 
 
 class IMUSensor(object):
-    def __init__(self, parent_actor, sensor_name = 'imu', trans = None):
+    def __init__(self, parent_actor, sensor_name='imu', trans=None):
         self.sensor = None
         self._parent = parent_actor
         self.accelerometer = (0.0, 0.0, 0.0)
@@ -23,20 +23,14 @@ class IMUSensor(object):
         bp.set_attribute('noise_gyro_stddev_z', str(0.0))
 
         if trans is None:
-            trans = carla.Transform(carla.Location(x=0.0, y=0.0, z=2.4),
-                                    carla.Rotation(roll=0.0, pitch=0.0, yaw=270.0))
+            trans = carla.Transform(carla.Location(x=0.0, y=0.0, z=2.4), carla.Rotation(roll=0.0, pitch=0.0, yaw=270.0))
 
-        self.sensor = world.spawn_actor(
-            bp,
-            trans,
-            attach_to=self._parent
-        )
+        self.sensor = world.spawn_actor(bp, trans, attach_to=self._parent)
 
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(
-            lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data))
+        self.sensor.listen(lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data))
 
     @staticmethod
     def _IMU_callback(weak_self, sensor_data):
@@ -47,9 +41,11 @@ class IMUSensor(object):
         self.accelerometer = (
             max(limits[0], min(limits[1], sensor_data.accelerometer.x)),
             max(limits[0], min(limits[1], sensor_data.accelerometer.y)),
-            max(limits[0], min(limits[1], sensor_data.accelerometer.z)))
+            max(limits[0], min(limits[1], sensor_data.accelerometer.z)),
+        )
         self.gyroscope = (
             max(limits[0], min(limits[1], math.degrees(sensor_data.gyroscope.x))),
             max(limits[0], min(limits[1], math.degrees(sensor_data.gyroscope.y))),
-            max(limits[0], min(limits[1], math.degrees(sensor_data.gyroscope.z))))
+            max(limits[0], min(limits[1], math.degrees(sensor_data.gyroscope.z))),
+        )
         self.compass = math.degrees(sensor_data.compass)

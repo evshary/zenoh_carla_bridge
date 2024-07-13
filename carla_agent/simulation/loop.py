@@ -21,7 +21,7 @@ def game_loop(args, doc):
         client.set_timeout(20.0)
 
         sim_world = client.load_world(config.SIM_WORLD)
-        #sim_world = client.get_world()
+        # sim_world = client.get_world()
         if args.sync:
             original_settings = sim_world.get_settings()
             settings = sim_world.get_settings()
@@ -34,14 +34,11 @@ def game_loop(args, doc):
             traffic_manager.set_synchronous_mode(True)
 
         if args.autopilot and not sim_world.get_settings().synchronous_mode:
-            print("WARNING: You are currently in asynchronous mode and could "
-                  "experience some issues with the traffic simulation")
+            print('WARNING: You are currently in asynchronous mode and could ' 'experience some issues with the traffic simulation')
 
         if args.pygame:
-            display = pygame.display.set_mode(
-                (args.width, args.height),
-                pygame.HWSURFACE | pygame.DOUBLEBUF)
-            display.fill((0,0,0))
+            display = pygame.display.set_mode((args.width, args.height), pygame.HWSURFACE | pygame.DOUBLEBUF)
+            display.fill((0, 0, 0))
             pygame.display.flip()
 
         hud = HUD(args.width, args.height, doc)
@@ -74,7 +71,7 @@ def game_loop(args, doc):
         if original_settings:
             sim_world.apply_settings(original_settings)
 
-        if (world and world.recording_enabled):
+        if world and world.recording_enabled:
             client.stop_recorder()
 
         if world is not None:

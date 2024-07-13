@@ -23,10 +23,12 @@ class World(object):
         self.actor_role_name = args.rolename
         # Set initial position
         self.position = None  # None means random position
-        if args.position != "random":
+        if args.position != 'random':
             position = args.position.split(',')
-            self.position = carla.Transform(carla.Location(x=float(position[0]), y=float(position[1]), z=float(position[2])), 
-                                            carla.Rotation(pitch=float(position[3]), yaw=float(position[4]), roll=float(position[5])))
+            self.position = carla.Transform(
+                carla.Location(x=float(position[0]), y=float(position[1]), z=float(position[2])),
+                carla.Rotation(pitch=float(position[3]), yaw=float(position[4]), roll=float(position[5])),
+            )
         try:
             self.map = self.world.get_map()
         except RuntimeError as error:
@@ -68,7 +70,7 @@ class World(object):
             carla.MapLayer.Props,
             carla.MapLayer.StreetLights,
             carla.MapLayer.Walls,
-            carla.MapLayer.All
+            carla.MapLayer.All,
         ]
 
     def restart(self):
@@ -79,7 +81,7 @@ class World(object):
         cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
         # Get a random blueprint.
         blueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
-        blueprint.set_attribute('role_name', "autoware_"+self.actor_role_name)
+        blueprint.set_attribute('role_name', 'autoware_' + self.actor_role_name)
         if blueprint.has_attribute('color'):
             color = random.choice(blueprint.get_attribute('color').recommended_values)
             blueprint.set_attribute('color', color)
@@ -164,7 +166,7 @@ class World(object):
             self.radar_sensor = None
 
     def modify_vehicle_physics(self, actor):
-        #If actor is not a vehicle, we cannot use the physics control
+        # If actor is not a vehicle, we cannot use the physics control
         try:
             physics_control = actor.get_physics_control()
             physics_control.use_sweep_wheel_collision = True
@@ -192,7 +194,8 @@ class World(object):
             self.collision_sensor.sensor,
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
-            self.imu_sensor.sensor]
+            self.imu_sensor.sensor,
+        ]
         for sensor in sensors:
             if sensor is not None:
                 sensor.stop()

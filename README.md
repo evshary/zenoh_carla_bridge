@@ -94,3 +94,12 @@ export CLANG_PATH=/usr/bin/clang-12
 * `/vehicle/status/velocity_status`
 * `/vehicle/status/hazard_lights_status`: Not support
 * `/vehicle/status/turn_indicators_status`: Not support
+
+## For Developers
+
+You can use pre-commit and Ruff to have correct Python format
+
+```shell
+python3 -m pip install pre-commit ruff
+pre-commit install --install-hooks
+```
