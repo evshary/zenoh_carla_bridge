@@ -4,7 +4,7 @@ import carla
 
 
 class GnssSensor(object):
-    def __init__(self, parent_actor, sensor_name = 'gnss', trans = None):
+    def __init__(self, parent_actor, sensor_name='gnss', trans=None):
         self.sensor = None
         self._parent = parent_actor
         self.lat = 0.0
@@ -23,11 +23,7 @@ class GnssSensor(object):
         if trans is None:
             trans = carla.Transform(carla.Location(x=0.0, y=0.0, z=2.4))
 
-        self.sensor = world.spawn_actor(
-            bp,
-            trans,
-            attach_to=self._parent
-        )
+        self.sensor = world.spawn_actor(bp, trans, attach_to=self._parent)
 
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.

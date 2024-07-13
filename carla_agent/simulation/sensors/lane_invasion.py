@@ -4,11 +4,11 @@ import carla
 
 
 class LaneInvasionSensor(object):
-    def __init__(self, parent_actor, hud, sensor_name = 'lane_invasion', trans = None):
+    def __init__(self, parent_actor, hud, sensor_name='lane_invasion', trans=None):
         self.sensor = None
 
         # If the spawn object is not a vehicle, we cannot use the Lane Invasion Sensor
-        if parent_actor.type_id.startswith("vehicle."):
+        if parent_actor.type_id.startswith('vehicle.'):
             self._parent = parent_actor
             self.hud = hud
 
@@ -19,11 +19,7 @@ class LaneInvasionSensor(object):
             if trans is None:
                 trans = carla.Transform()
 
-            self.sensor = world.spawn_actor(
-                bp,
-                trans,
-                attach_to=self._parent
-            )
+            self.sensor = world.spawn_actor(bp, trans, attach_to=self._parent)
 
             # We need to pass the lambda a weak reference to self to avoid circular
             # reference.

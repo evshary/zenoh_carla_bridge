@@ -8,7 +8,7 @@ from ..utils import get_actor_display_name
 
 
 class CollisionSensor(object):
-    def __init__(self, parent_actor, hud, sensor_name = 'collision', trans = None):
+    def __init__(self, parent_actor, hud, sensor_name='collision', trans=None):
         self.sensor = None
         self.history = []
         self._parent = parent_actor
@@ -21,11 +21,7 @@ class CollisionSensor(object):
         if trans is None:
             trans = carla.Transform()
 
-        self.sensor = world.spawn_actor(
-            bp,
-            trans,
-            attach_to=self._parent
-        )
+        self.sensor = world.spawn_actor(bp, trans, attach_to=self._parent)
 
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.

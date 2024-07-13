@@ -15,14 +15,14 @@ from ..utils import get_actor_bounding_extent
 class RgbCamera(object):
     callback = None
 
-    def __init__(self, actor: Actor, range: float = 50, sensor_name = 'rgb_camera', trans = None):
+    def __init__(self, actor: Actor, range: float = 50, sensor_name='rgb_camera', trans=None):
         extent = get_actor_bounding_extent(actor)
         bound_x = extent.x
         bound_y = extent.y
         bound_z = extent.z
 
         world = actor.get_world()
-        bp = world.get_blueprint_library().find("sensor.camera.rgb")
+        bp = world.get_blueprint_library().find('sensor.camera.rgb')
         bp.set_attribute('role_name', sensor_name)
 
         if trans is None:
@@ -57,7 +57,7 @@ class RgbCamera(object):
 
         # Parse point cloud data into Nx4 array
         image.convert(ColorConverter.Raw)
-        array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
+        array = np.frombuffer(image.raw_data, dtype=np.dtype('uint8'))
         array = np.reshape(array, (image.height, image.width, 4))
         array = array[:, :, :3]
 
