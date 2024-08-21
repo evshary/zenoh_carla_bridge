@@ -12,7 +12,7 @@ use carla::{
 };
 use cdr::{CdrLe, Infinite};
 use std::sync::{atomic::Ordering, Arc};
-use zenoh::{prelude::sync::*, publication::Publisher, subscriber::Subscriber};
+use zenoh::{prelude::*, pubsub::Publisher, pubsub::Subscriber, Session};
 use zenoh_ros_type::{
     autoware_auto_control_msgs::{
         AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
@@ -81,22 +81,22 @@ impl<'a> VehicleBridge<'a> {
 
         let publisher_velocity = z_session
             .declare_publisher(autoware.topic_velocity_status.clone())
-            .res()?;
+            .wait()?;
         let publisher_steer = z_session
             .declare_publisher(autoware.topic_steering_status.clone())
-            .res()?;
+            .wait()?;
         let publisher_gear = z_session
             .declare_publisher(autoware.topic_gear_status.clone())
-            .res()?;
+            .wait()?;
         let publisher_control = z_session
             .declare_publisher(autoware.topic_control_mode.clone())
-            .res()?;
+            .wait()?;
         let publisher_turnindicator = z_session
             .declare_publisher(autoware.topic_turn_indicators_status.clone())
-            .res()?;
+            .wait()?;
         let publisher_hazardlight = z_session
             .declare_publisher(autoware.topic_hazard_lights_status.clone())
-            .res()?;
+            .wait()?;
         let speed = Arc::new(AtomicF32::new(0.0));
 
         // TODO: We can use default value here
@@ -119,28 +119,28 @@ impl<'a> VehicleBridge<'a> {
             .declare_subscriber(autoware.topic_control_cmd.clone())
             .callback_mut(move |sample| {
                 let result: Result<AckermannControlCommand, _> =
-                    cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
+                    cdr::deserialize_from(sample.payload().reader(), cdr::size::Infinite);
                 let Ok(cmd) = result else {
                     log::error!("Unable to parse data from /control/command/control_cmd");
                     return;
                 };
                 cloned_cmd.store(Arc::new(cmd));
             })
-            .res()?;
+            .wait()?;
         let current_gear = Arc::new(ArcSwap::from_pointee(gear_report::NONE));
         let cloned_gear = current_gear.clone();
         let subscriber_gear_cmd = z_session
             .declare_subscriber(autoware.topic_gear_cmd.clone())
             .callback_mut(move |sample| {
                 let result: Result<GearCommand, _> =
-                    cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
+                    cdr::deserialize_from(sample.payload().reader(), cdr::size::Infinite);
                 let Ok(cmd) = result else {
                     log::error!("Unable to parse data from /control/command/gear_cmd");
                     return;
                 };
                 cloned_gear.store(Arc::new(cmd.command));
             })
-            .res()?;
+            .wait()?;
         let current_gate_mode = Arc::new(ArcSwap::from_pointee(GateMode {
             data: gate_mode_data::AUTO,
         }));
@@ -149,26 +149,26 @@ impl<'a> VehicleBridge<'a> {
             .declare_subscriber(autoware.topic_current_gate_mode.clone())
             .callback_mut(move |sample| {
                 let result: Result<GateMode, _> =
-                    cdr::deserialize_from(&*sample.payload.contiguous(), cdr::size::Infinite);
+                    cdr::deserialize_from(sample.payload().reader(), cdr::size::Infinite);
                 let Ok(mode) = result else {
                     log::error!("Unable to parse data from /control/current_gate_mode");
                     return;
                 };
                 cloned_gate_mode.store(Arc::new(mode));
             })
-            .res()?;
+            .wait()?;
         let _subscriber_turnindicator = z_session
             .declare_subscriber(autoware.topic_turn_indicators_cmd.clone())
             .callback_mut(move |_sample| {
                 // TODO: Not support yet
             })
-            .res()?;
+            .wait()?;
         let _subscriber_hazardlight = z_session
             .declare_subscriber(autoware.topic_hazard_lights_cmd.clone())
             .callback_mut(move |_sample| {
                 // TODO: Not support yet
             })
-            .res()?;
+            .wait()?;
 
         Ok(VehicleBridge {
             vehicle_name,
@@ -216,7 +216,7 @@ impl<'a> VehicleBridge<'a> {
             velocity_msg.longitudinal_velocity
         );
         let encoded = cdr::serialize::<_, _, CdrLe>(&velocity_msg, Infinite)?;
-        self.publisher_velocity.put(encoded).res()?;
+        self.publisher_velocity.put(encoded).wait()?;
         self.speed
             .store(velocity_msg.longitudinal_velocity, Ordering::Relaxed);
 
@@ -236,7 +236,7 @@ impl<'a> VehicleBridge<'a> {
                 * -1.0,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&steer_msg, Infinite)?;
-        self.publisher_steer.put(encoded).res()?;
+        self.publisher_steer.put(encoded).wait()?;
         Ok(())
     }
 
@@ -249,7 +249,7 @@ impl<'a> VehicleBridge<'a> {
             report: **self.current_gear.load(),
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&gear_msg, Infinite)?;
-        self.publisher_gear.put(encoded).res()?;
+        self.publisher_gear.put(encoded).wait()?;
         Ok(())
     }
 
@@ -267,7 +267,7 @@ impl<'a> VehicleBridge<'a> {
             mode,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&control_msg, Infinite)?;
-        self.publisher_control.put(encoded).res()?;
+        self.publisher_control.put(encoded).wait()?;
         Ok(())
     }
 
@@ -281,7 +281,7 @@ impl<'a> VehicleBridge<'a> {
             report: turn_indicators_report::DISABLE,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&turnindicator_msg, Infinite)?;
-        self.publisher_turnindicator.put(encoded).res()?;
+        self.publisher_turnindicator.put(encoded).wait()?;
         Ok(())
     }
 
@@ -295,7 +295,7 @@ impl<'a> VehicleBridge<'a> {
             report: hazard_lights_report::DISABLE,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&hazardlight_msg, Infinite)?;
-        self.publisher_hazardlight.put(encoded).res()?;
+        self.publisher_hazardlight.put(encoded).wait()?;
         Ok(())
     }
 

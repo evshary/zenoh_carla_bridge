@@ -2,7 +2,7 @@ use crate::error::Result;
 use cdr::{CdrLe, Infinite};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use zenoh::{prelude::sync::*, publication::Publisher};
+use zenoh::{prelude::*, pubsub::Publisher, Session};
 use zenoh_ros_type::{builtin_interfaces, rosgraph_msgs};
 
 pub struct SimulatorClock<'a> {
@@ -12,7 +12,7 @@ pub struct SimulatorClock<'a> {
 impl<'a> SimulatorClock<'a> {
     pub fn new(z_session: Arc<Session>, ros2: bool) -> Result<SimulatorClock<'a>> {
         let key = if ros2 { "*/clock" } else { "*/rt/clock" };
-        let publisher_clock = z_session.declare_publisher(key).res()?;
+        let publisher_clock = z_session.declare_publisher(key).wait()?;
         Ok(SimulatorClock { publisher_clock })
     }
 
@@ -34,7 +34,7 @@ impl<'a> SimulatorClock<'a> {
         };
         let clock_msg = rosgraph_msgs::Clock { clock: time };
         let encoded = cdr::serialize::<_, _, CdrLe>(&clock_msg, Infinite)?;
-        self.publisher_clock.put(encoded).res()?;
+        self.publisher_clock.put(encoded).wait()?;
         Ok(())
     }
 }

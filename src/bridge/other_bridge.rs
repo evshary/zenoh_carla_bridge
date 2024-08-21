@@ -2,7 +2,7 @@ use super::actor_bridge::ActorBridge;
 use crate::error::Result;
 use carla::client::Actor;
 use std::sync::Arc;
-use zenoh::prelude::sync::*;
+use zenoh::{prelude::*, Session};
 
 pub struct OtherActorBridge {
     _actor: Actor,

@@ -16,7 +16,7 @@ use std::{
     thread,
     time::Duration,
 };
-use zenoh::prelude::sync::*;
+use zenoh::{prelude::*, Config};
 
 // The default interval between ticks
 const DEFAULT_CARLA_TICK_INTERVAL_MS: &str = "50";
@@ -90,8 +90,8 @@ fn main() -> Result<()> {
     config
         .listen
         .endpoints
-        .extend(zenoh_listen.iter().map(|p| p.parse().unwrap()));
-    let z_session = Arc::new(zenoh::open(config).res()?);
+        .set(zenoh_listen.iter().map(|p| p.parse().unwrap()).collect());
+    let z_session = Arc::new(zenoh::open(config).wait()?);
 
     // Carla
     let client = Client::connect(&carla_address, carla_port, None);
