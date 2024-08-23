@@ -12,7 +12,11 @@ use carla::{
 };
 use cdr::{CdrLe, Infinite};
 use std::sync::{atomic::Ordering, Arc};
-use zenoh::{prelude::*, pubsub::Publisher, pubsub::Subscriber, Session};
+use zenoh::{
+    prelude::*, 
+    pubsub::{Publisher, Subscriber}, 
+    Session
+};
 use zenoh_ros_type::{
     autoware_auto_control_msgs::{
         AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,

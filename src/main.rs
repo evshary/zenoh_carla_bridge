@@ -90,7 +90,8 @@ fn main() -> Result<()> {
     config
         .listen
         .endpoints
-        .set(zenoh_listen.iter().map(|p| p.parse().unwrap()).collect());
+        .set(zenoh_listen.iter().map(|p| p.parse().unwrap()).collect())
+        .expect("Failed to set zenoh listen endpoints.");
     let z_session = Arc::new(zenoh::open(config).wait()?);
 
     // Carla
