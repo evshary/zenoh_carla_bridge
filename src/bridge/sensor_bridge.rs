@@ -29,7 +29,7 @@ use std::{
     },
     thread,
 };
-use zenoh::prelude::sync::*;
+use zenoh::{prelude::*, Session};
 use zenoh_ros_type::{geometry_msgs, sensor_msgs, std_msgs};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -176,17 +176,17 @@ fn register_camera_rgb(
     let raw_key = key_list[0].clone();
     let info_key = key_list[1].clone();
 
-    let image_publisher = z_session.declare_publisher(raw_key.clone()).res()?;
-    let info_publisher = z_session.declare_publisher(info_key.clone()).res()?;
+    let image_publisher = z_session.declare_publisher(raw_key.clone()).wait()?;
+    let info_publisher = z_session.declare_publisher(info_key.clone()).wait()?;
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = image_publisher.put(sensor_data).res() {
+                if let Err(_) = image_publisher.put(sensor_data).wait() {
                     log::error!("Failed to publish to {}", raw_key);
                 }
             }
             Ok((MessageType::InfoData, info_data)) => {
-                if let Err(_) = info_publisher.put(info_data).res() {
+                if let Err(_) = info_publisher.put(info_data).wait() {
                     log::error!("Failed to publish to {}", info_key);
                 }
             }
@@ -252,11 +252,11 @@ fn register_lidar_raycast(
 ) -> Result<()> {
     let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
     let key = key_list[0].clone();
-    let pcd_publisher = z_session.declare_publisher(key.clone()).res()?;
+    let pcd_publisher = z_session.declare_publisher(key.clone()).wait()?;
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = pcd_publisher.put(sensor_data).res() {
+                if let Err(_) = pcd_publisher.put(sensor_data).wait() {
                     log::error!("Failed to publish to {}", key);
                 }
             }
@@ -291,11 +291,11 @@ fn register_lidar_raycast_semantic(
 ) -> Result<()> {
     let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
     let key = key_list[0].clone();
-    let pcd_publisher = z_session.declare_publisher(key.clone()).res()?;
+    let pcd_publisher = z_session.declare_publisher(key.clone()).wait()?;
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = pcd_publisher.put(sensor_data).res() {
+                if let Err(_) = pcd_publisher.put(sensor_data).wait() {
                     log::error!("Failed to publish to {}", key);
                 }
             }
@@ -330,11 +330,11 @@ fn register_imu(
 ) -> Result<()> {
     let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
     let key = key_list[0].clone();
-    let imu_publisher = z_session.declare_publisher(key.clone()).res()?;
+    let imu_publisher = z_session.declare_publisher(key.clone()).wait()?;
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = imu_publisher.put(sensor_data).res() {
+                if let Err(_) = imu_publisher.put(sensor_data).wait() {
                     log::error!("Failed to publish to {}", key);
                 }
             }
@@ -368,11 +368,11 @@ fn register_gnss(
 ) -> Result<()> {
     let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
     let key = key_list[0].clone();
-    let gnss_publisher = z_session.declare_publisher(key.clone()).res()?;
+    let gnss_publisher = z_session.declare_publisher(key.clone()).wait()?;
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = gnss_publisher.put(sensor_data).res() {
+                if let Err(_) = gnss_publisher.put(sensor_data).wait() {
                     log::error!("Failed to publish to {}", key);
                 }
             }

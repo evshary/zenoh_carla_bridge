@@ -8,7 +8,7 @@ use super::{
 use crate::{autoware::Autoware, error::Result};
 use carla::client::{Actor, ActorKind};
 use std::sync::Arc;
-use zenoh::prelude::sync::*;
+use zenoh::Session;
 
 #[derive(Debug)]
 pub enum BridgeType {

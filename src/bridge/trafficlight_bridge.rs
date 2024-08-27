@@ -2,7 +2,7 @@ use super::actor_bridge::ActorBridge;
 use crate::error::Result;
 use carla::client::TrafficLight;
 use std::sync::Arc;
-use zenoh::prelude::sync::*;
+use zenoh::Session;
 
 pub struct TrafficLightBridge {
     _actor: TrafficLight,

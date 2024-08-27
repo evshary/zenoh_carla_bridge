@@ -3,9 +3,9 @@ use std::collections::HashMap;
 
 #[derive(Default, Clone)]
 pub struct Autoware {
-    pub ros2: bool,
+    pub _ros2: bool,
     pub prefix: String,
-    pub vehicle_name: String,
+    pub _vehicle_name: String,
     // Vehicle publish topic
     pub topic_velocity_status: String,
     pub topic_steering_status: String,
@@ -36,9 +36,9 @@ impl Autoware {
             format!("{vehicle_name}/rt/")
         };
         Autoware {
-            ros2,
+            _ros2: ros2,
             prefix: prefix.clone(),
-            vehicle_name,
+            _vehicle_name: vehicle_name,
             // Vehicle publish topic
             topic_velocity_status: prefix.clone() + "vehicle/status/velocity_status",
             topic_steering_status: prefix.clone() + "vehicle/status/steering_status",
