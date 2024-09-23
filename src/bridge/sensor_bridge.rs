@@ -515,7 +515,19 @@ fn lidar_callback(
         sensor_msgs::PointField {
             name: "intensity".to_string(),
             offset: 12,
-            datatype: PointFieldType::FLOAT32 as u8,
+            datatype: PointFieldType::UINT8 as u8,
+            count: 1,
+        },
+        sensor_msgs::PointField {
+            name: "return_type".to_string(),
+            offset: 13,
+            datatype: PointFieldType::UINT8 as u8,
+            count: 1,
+        },
+        sensor_msgs::PointField {
+            name: "channel".to_string(),
+            offset: 14,
+            datatype: PointFieldType::UINT16 as u8,
             count: 1,
         },
     ];

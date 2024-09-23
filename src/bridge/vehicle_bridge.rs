@@ -18,10 +18,10 @@ use zenoh::{
     Session
 };
 use zenoh_ros_type::{
-    autoware_auto_control_msgs::{
-        AckermannControlCommand, AckermannLateralCommand, LongitudinalCommand,
+    autoware_control_msgs::{
+        Control, Lateral, Longitudinal,
     },
-    autoware_auto_vehicle_msgs::{
+    autoware_vehicle_msgs::{
         control_mode_report, gear_report, hazard_lights_report, turn_indicators_report,
         ControlModeReport, GearCommand, GearReport, HazardLightsReport, SteeringReport,
         TurnIndicatorsReport, VelocityReport,
@@ -42,8 +42,8 @@ pub struct VehicleBridge<'a> {
     publisher_control: Publisher<'a>,
     publisher_turnindicator: Publisher<'a>,
     publisher_hazardlight: Publisher<'a>,
-    speed: Arc<AtomicF32>,
-    current_ackermann_cmd: Arc<ArcSwap<AckermannControlCommand>>,
+    velocity: Arc<AtomicF32>,
+    current_ackermann_cmd: Arc<ArcSwap<Control>>,
     current_gear: Arc<ArcSwap<u8>>,
     current_gate_mode: Arc<ArcSwap<GateMode>>,
 }
@@ -101,28 +101,34 @@ impl<'a> VehicleBridge<'a> {
         let publisher_hazardlight = z_session
             .declare_publisher(autoware.topic_hazard_lights_status.clone())
             .wait()?;
-        let speed = Arc::new(AtomicF32::new(0.0));
+        let velocity = Arc::new(AtomicF32::new(0.0));
 
         // TODO: We can use default value here
-        let current_ackermann_cmd = Arc::new(ArcSwap::from_pointee(AckermannControlCommand {
+        let current_ackermann_cmd = Arc::new(ArcSwap::from_pointee(Control {
             stamp: Time { sec: 0, nanosec: 0 },
-            lateral: AckermannLateralCommand {
+            control_time: Time { sec: 0, nanosec: 0 },
+            lateral: Lateral {
                 stamp: Time { sec: 0, nanosec: 0 },
+                control_time: Time { sec: 0, nanosec: 0 },
                 steering_tire_angle: 0.0,
                 steering_tire_rotation_rate: 0.0,
+                is_defined_steering_tire_rotation_rate: false,
             },
-            longitudinal: LongitudinalCommand {
+            longitudinal: Longitudinal {
                 stamp: Time { sec: 0, nanosec: 0 },
-                speed: 0.0,
+                control_time: Time { sec: 0, nanosec: 0 },
+                velocity: 0.0,
                 acceleration: 0.0,
                 jerk: 0.0,
+                is_defined_acceleration: false,
+                is_defined_jerk: false,
             },
         }));
         let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
             .declare_subscriber(autoware.topic_control_cmd.clone())
             .callback_mut(move |sample| {
-                let result: Result<AckermannControlCommand, _> =
+                let result: Result<Control, _> =
                     cdr::deserialize_from(sample.payload().reader(), cdr::size::Infinite);
                 let Ok(cmd) = result else {
                     log::error!("Unable to parse data from /control/command/control_cmd");
@@ -186,7 +192,7 @@ impl<'a> VehicleBridge<'a> {
             publisher_control,
             publisher_turnindicator,
             publisher_hazardlight,
-            speed,
+            velocity,
             current_ackermann_cmd,
             current_gear,
             current_gate_mode,
@@ -221,7 +227,7 @@ impl<'a> VehicleBridge<'a> {
         );
         let encoded = cdr::serialize::<_, _, CdrLe>(&velocity_msg, Infinite)?;
         self.publisher_velocity.put(encoded).wait()?;
-        self.speed
+        self.velocity
             .store(velocity_msg.longitudinal_velocity, Ordering::Relaxed);
 
         Ok(())
@@ -304,16 +310,16 @@ impl<'a> VehicleBridge<'a> {
     }
 
     fn update_carla_control(&mut self) {
-        let AckermannControlCommand {
+        let Control {
             lateral:
-                AckermannLateralCommand {
+                Lateral {
                     steering_tire_angle,
                     steering_tire_rotation_rate,
                     ..
                 },
             longitudinal:
-                LongitudinalCommand {
-                    mut speed,
+                Longitudinal {
+                    mut velocity,
                     mut acceleration,
                     mut jerk,
                     ..
@@ -327,7 +333,7 @@ impl<'a> VehicleBridge<'a> {
             }
             gear_report::PARK => {
                 /* Force the vehicle to stop */
-                speed = 0.0;
+                velocity = 0.0;
                 acceleration = 0.0;
                 jerk = 0.0;
             }
@@ -335,7 +341,7 @@ impl<'a> VehicleBridge<'a> {
         };
         log::debug!(
             "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
-            speed,
+            velocity,
             acceleration,
             -steering_tire_angle.to_degrees()
         );
@@ -349,7 +355,7 @@ impl<'a> VehicleBridge<'a> {
             .apply_ackermann_control(&VehicleAckermannControl {
                 steer,
                 steer_speed: steering_tire_rotation_rate,
-                speed,
+                speed: velocity,
                 acceleration,
                 jerk,
             });
