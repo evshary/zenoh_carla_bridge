@@ -13,14 +13,12 @@ use carla::{
 use cdr::{CdrLe, Infinite};
 use std::sync::{atomic::Ordering, Arc};
 use zenoh::{
-    prelude::*, 
-    pubsub::{Publisher, Subscriber}, 
-    Session
+    prelude::*,
+    pubsub::{Publisher, Subscriber},
+    Session,
 };
 use zenoh_ros_type::{
-    autoware_control_msgs::{
-        Control, Lateral, Longitudinal,
-    },
+    autoware_control_msgs::{Control, Lateral, Longitudinal},
     autoware_vehicle_msgs::{
         control_mode_report, gear_report, hazard_lights_report, turn_indicators_report,
         ControlModeReport, GearCommand, GearReport, HazardLightsReport, SteeringReport,
@@ -43,7 +41,7 @@ pub struct VehicleBridge<'a> {
     publisher_turnindicator: Publisher<'a>,
     publisher_hazardlight: Publisher<'a>,
     velocity: Arc<AtomicF32>,
-    current_ackermann_cmd: Arc<ArcSwap<Control>>,
+    current_ackermann_cmd: Arc<ArcSwap<Option<Control>>>,
     current_gear: Arc<ArcSwap<u8>>,
     current_gate_mode: Arc<ArcSwap<GateMode>>,
 }
@@ -95,7 +93,7 @@ impl<'a> VehicleBridge<'a> {
         let publisher_control = z_session
             .declare_publisher(autoware.topic_control_mode.clone())
             .wait()?;
-        let publisher_turnindicator = z_session
+        let publisher_turnindicator: Publisher<'_> = z_session
             .declare_publisher(autoware.topic_turn_indicators_status.clone())
             .wait()?;
         let publisher_hazardlight = z_session
@@ -103,27 +101,7 @@ impl<'a> VehicleBridge<'a> {
             .wait()?;
         let velocity = Arc::new(AtomicF32::new(0.0));
 
-        // TODO: We can use default value here
-        let current_ackermann_cmd = Arc::new(ArcSwap::from_pointee(Control {
-            stamp: Time { sec: 0, nanosec: 0 },
-            control_time: Time { sec: 0, nanosec: 0 },
-            lateral: Lateral {
-                stamp: Time { sec: 0, nanosec: 0 },
-                control_time: Time { sec: 0, nanosec: 0 },
-                steering_tire_angle: 0.0,
-                steering_tire_rotation_rate: 0.0,
-                is_defined_steering_tire_rotation_rate: false,
-            },
-            longitudinal: Longitudinal {
-                stamp: Time { sec: 0, nanosec: 0 },
-                control_time: Time { sec: 0, nanosec: 0 },
-                velocity: 0.0,
-                acceleration: 0.0,
-                jerk: 0.0,
-                is_defined_acceleration: false,
-                is_defined_jerk: false,
-            },
-        }));
+        let current_ackermann_cmd = Arc::new(ArcSwap::from_pointee(None));
         let cloned_cmd = current_ackermann_cmd.clone();
         let subscriber_control_cmd = z_session
             .declare_subscriber(autoware.topic_control_cmd.clone())
@@ -134,7 +112,7 @@ impl<'a> VehicleBridge<'a> {
                     log::error!("Unable to parse data from /control/command/control_cmd");
                     return;
                 };
-                cloned_cmd.store(Arc::new(cmd));
+                cloned_cmd.store(Arc::new(Some(cmd)));
             })
             .wait()?;
         let current_gear = Arc::new(ArcSwap::from_pointee(gear_report::NONE));
@@ -310,6 +288,10 @@ impl<'a> VehicleBridge<'a> {
     }
 
     fn update_carla_control(&mut self) {
+        let control = match **self.current_ackermann_cmd.load() {
+            None => return,
+            Some(ref c) => c.clone(),
+        };
         let Control {
             lateral:
                 Lateral {
@@ -325,7 +307,7 @@ impl<'a> VehicleBridge<'a> {
                     ..
                 },
             ..
-        } = **self.current_ackermann_cmd.load();
+        } = control;
         match **self.current_gear.load() {
             gear_report::DRIVE => { /* Do nothing */ }
             gear_report::REVERSE => {
