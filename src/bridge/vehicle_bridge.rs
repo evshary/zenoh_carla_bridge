@@ -13,14 +13,11 @@ use carla::{
 use cdr::{CdrLe, Infinite};
 use std::sync::{atomic::Ordering, Arc};
 use zenoh::{
-    prelude::*, 
-    pubsub::{Publisher, Subscriber}, 
-    Session
+    pubsub::{Publisher, Subscriber},
+    Session, Wait,
 };
 use zenoh_ros_type::{
-    autoware_control_msgs::{
-        Control, Lateral, Longitudinal,
-    },
+    autoware_control_msgs::{Control, Lateral, Longitudinal},
     autoware_vehicle_msgs::{
         control_mode_report, gear_report, hazard_lights_report, turn_indicators_report,
         ControlModeReport, GearCommand, GearReport, HazardLightsReport, SteeringReport,
@@ -33,9 +30,9 @@ use zenoh_ros_type::{
 pub struct VehicleBridge<'a> {
     vehicle_name: String,
     actor: Vehicle,
-    _subscriber_control_cmd: Subscriber<'a, ()>,
-    _subscriber_gear_cmd: Subscriber<'a, ()>,
-    _subscriber_gate_mode: Subscriber<'a, ()>,
+    _subscriber_control_cmd: Subscriber<()>,
+    _subscriber_gear_cmd: Subscriber<()>,
+    _subscriber_gate_mode: Subscriber<()>,
     publisher_velocity: Publisher<'a>,
     publisher_steer: Publisher<'a>,
     publisher_gear: Publisher<'a>,

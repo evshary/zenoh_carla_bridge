@@ -6,9 +6,8 @@ use crate::{
     utils,
 };
 use carla::{
-    client::Sensor,
+    client::{ActorBase, Sensor},
     geom::Location,
-    prelude::*,
     sensor::{
         data::{
             Color, GnssMeasurement, Image as CarlaImage, ImuMeasurement, LidarDetection,
@@ -29,7 +28,7 @@ use std::{
     },
     thread,
 };
-use zenoh::{prelude::*, Session};
+use zenoh::{Session, Wait};
 use zenoh_ros_type::{geometry_msgs, sensor_msgs, std_msgs};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

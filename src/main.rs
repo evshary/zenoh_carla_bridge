@@ -6,17 +6,21 @@ mod types;
 mod utils;
 
 use bridge::actor_bridge::{ActorBridge, BridgeType};
-use carla::{client::Client, prelude::*, rpc::ActorId};
+use carla::{
+    client::{ActorBase, Client},
+    rpc::ActorId,
+};
 use clap::{Parser, ValueEnum};
 use clock::SimulatorClock;
 use error::{BridgeError, Result};
+use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
     thread,
     time::Duration,
 };
-use zenoh::{prelude::*, Config};
+use zenoh::{Config, Wait};
 
 // The default interval between ticks
 const DEFAULT_CARLA_TICK_INTERVAL_MS: &str = "50";
@@ -88,9 +92,7 @@ fn main() -> Result<()> {
         None => Config::default(),
     };
     config
-        .listen
-        .endpoints
-        .set(zenoh_listen.iter().map(|p| p.parse().unwrap()).collect())
+        .insert_json5("listen/endpoints", &json!(zenoh_listen).to_string())
         .expect("Failed to set zenoh listen endpoints.");
     let z_session = Arc::new(zenoh::open(config).wait()?);
 

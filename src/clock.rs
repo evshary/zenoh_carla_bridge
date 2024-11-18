@@ -2,7 +2,7 @@ use crate::error::Result;
 use cdr::{CdrLe, Infinite};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use zenoh::{prelude::*, pubsub::Publisher, Session};
+use zenoh::{pubsub::Publisher, Session, Wait};
 use zenoh_ros_type::{builtin_interfaces, rosgraph_msgs};
 
 pub struct SimulatorClock<'a> {
