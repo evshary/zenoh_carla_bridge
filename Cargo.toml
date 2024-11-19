@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-zenoh = "1.0.0-alpha.6"
+zenoh = "1.0.2"
 carla = "0.11.1"
 serde = "1.0.188"
 serde_derive = "1.0.188"
@@ -21,3 +21,4 @@ nalgebra = "0.32.3"
 ndarray = "0.15.6"
 zenoh-ros-type = "0.3.4"
 #zenoh-ros-type = { git = "https://github.com/evshary/zenoh-ros-type", branch = "main" }
+serde_json = "1.0"
