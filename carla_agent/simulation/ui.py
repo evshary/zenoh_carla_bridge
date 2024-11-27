@@ -88,7 +88,7 @@ class HUD(object):
             self._info_text += ['Nearby vehicles:']
 
             def distance(loc):
-                math.sqrt((loc.x - t.location.x) ** 2 + (loc.y - t.location.y) ** 2 + (loc.z - t.location.z) ** 2)
+                return math.sqrt((loc.x - t.location.x) ** 2 + (loc.y - t.location.y) ** 2 + (loc.z - t.location.z) ** 2)
 
             vehicles = [(distance(x.get_location()), x) for x in vehicles if x.id != world.player.id]
             for d, vehicle in sorted(vehicles, key=lambda vehicles: vehicles[0]):
