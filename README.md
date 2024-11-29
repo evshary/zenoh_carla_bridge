@@ -1,9 +1,9 @@
 # zenoh_carla_bridge
 
 The repository can bridge Carla and Autoware with Zenoh.
-The bridge tranforms Carla data into Autoware ROS 2 topic and then sends it with Zenoh.
+The bridge tranforms Carla data into Autoware ROS 2 message and then sends it via Zenoh.
 
-If you want to have a quick demo, refer to [autoware_carla_launch](https://github.com/evshary/autoware_carla_launch)
+If you want to have a quick demo, refer to [autoware_carla_launch](https://autoware-carla-launch.readthedocs.io/en/latest/)
 
 ## Build
 
@@ -45,13 +45,6 @@ source /path/to/autoware/install/setup.bash
 RUST_LOG=c=info cargo run
 ```
 
-* Terminal5: Run ROS package to control vehicle
-
-```shell
-# For example
-ros2 run autoware_manual_control keyboard_control 
-```
-
 ## Note
 
 If you want to build in Ubuntu 22.04, remember to switch compiler's version.
@@ -63,37 +56,6 @@ export LIBCLANG_PATH=/usr/lib/llvm-12/lib
 export LIBCLANG_STATIC_PATH=/usr/lib/llvm-12/lib
 export CLANG_PATH=/usr/bin/clang-12
 ```
-
-## ROS topic
-
-### Input topic
-
-#### Control
-
-* `/control/command/control_cmd`
-* `/control/command/emergency_cmd`
-* `/control/command/gear_cmd`
-* `/control/command/hazard_lights_cmd`: Not support
-* `/control/command/turn_indicators_cmd`: Not support
-
-#### Sensing
-
-* `/sensing/camera/traffic_light/camera_info`
-* `/sensing/camera/traffic_light/image_raw`
-* `/sensing/gnss/pose`: Not support
-* `/sensing/gnss/pose_with_covariance`: Not support
-* `/sensing/imu/tamagawa/imu_raw`
-* `/sensing/lidar/top/pointcloud_raw`
-* `/sensing/lidar/top/pointcloud_raw_ex`
-
-### Output topic
-
-* `/vehicle/status/control_mode`
-* `/vehicle/status/gear_status`
-* `/vehicle/status/steering_status`
-* `/vehicle/status/velocity_status`
-* `/vehicle/status/hazard_lights_status`: Not support
-* `/vehicle/status/turn_indicators_status`: Not support
 
 ## For Developers
 

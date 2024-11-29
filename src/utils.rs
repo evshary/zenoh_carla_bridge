@@ -9,7 +9,7 @@ pub fn create_ros_header(timestamp: Option<f64>) -> std_msgs::Header {
     let time = if let Some(sec) = timestamp {
         builtin_interfaces::Time {
             sec: sec.floor() as i32,
-            nanosec: (sec.fract() * 1000_000_000_f64) as u32,
+            nanosec: (sec.fract() * 1_000_000_000_f64) as u32,
         }
     } else {
         // If there is no timestamp, use system time
