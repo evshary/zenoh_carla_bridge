@@ -110,7 +110,7 @@ impl Autoware {
             SensorType::CameraRgb => {
                 let raw_key = self.list_image_raw.get(sensor_name);
                 let info_key = self.list_camera_info.get(sensor_name);
-                if raw_key != None && info_key != None {
+                if raw_key.is_some() && info_key.is_some() {
                     return Some(vec![
                         raw_key.unwrap().to_owned(),
                         info_key.unwrap().to_owned(),
@@ -120,25 +120,25 @@ impl Autoware {
             SensorType::Collision => {}
             SensorType::Imu => {
                 let imu_key = self.list_imu.get(sensor_name);
-                if imu_key != None {
+                if imu_key.is_some() {
                     return Some(vec![imu_key.unwrap().to_owned()]);
                 }
             }
             SensorType::LidarRayCast => {
                 let lidar_key = self.list_lidar.get(sensor_name);
-                if lidar_key != None {
+                if lidar_key.is_some() {
                     return Some(vec![lidar_key.unwrap().to_owned()]);
                 }
             }
             SensorType::LidarRayCastSemantic => {
                 let lidar_key = self.list_lidar_semantics.get(sensor_name);
-                if lidar_key != None {
+                if lidar_key.is_some() {
                     return Some(vec![lidar_key.unwrap().to_owned()]);
                 }
             }
             SensorType::Gnss => {
                 let gnss_key = self.list_gnss.get(sensor_name);
-                if gnss_key != None {
+                if gnss_key.is_some() {
                     return Some(vec![gnss_key.unwrap().to_owned()]);
                 }
             }

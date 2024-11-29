@@ -14,17 +14,17 @@ pub enum PointFieldType {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum GnssStatus {
-    StatusNoFix = -1,
-    StatusFix = 0,
-    StatusSbasFix = 1,
-    StatusGbasFix = 2,
+    NoFix = -1,
+    Fix = 0,
+    SbasFix = 1,
+    GbasFix = 2,
 }
 
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum GnssService {
-    ServiceGps = 1,
-    ServiceGlonass = 2,
-    ServiceCompass = 4,
-    ServiceGalileo = 8,
+    Gps = 1,
+    Glonass = 2,
+    Compass = 4,
+    Galileo = 8,
 }

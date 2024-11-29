@@ -49,10 +49,10 @@ jobs:
       - name: Run cargo check
         run: |
           cargo check --all --tests
-      #- name: Run cargo clippy
-      #  run: |
-      #    cargo clippy --version
-      #    cargo clippy --all-targets -- -W warnings -D warnings
+      - name: Run cargo clippy
+        run: |
+          cargo clippy --version
+          cargo clippy --all-targets -- -W warnings -D warnings
       - name: Create Documentation
         run: |
           cargo doc --no-deps --all-features

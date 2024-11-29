@@ -12,11 +12,11 @@ use zenoh::Session;
 
 #[derive(Debug)]
 pub enum BridgeType {
-    BridgeTypeVehicle(String),
-    BridgeTypeSensor(String, SensorType, String),
-    BridgeTypeTrafficLight,
-    BridgeTypeTrafficSign,
-    BridgeTypeOther,
+    Vehicle(String),
+    Sensor(String, SensorType, String),
+    TrafficLight,
+    TrafficSign,
+    Other,
 }
 
 pub trait ActorBridge {
@@ -27,9 +27,9 @@ pub fn get_bridge_type(actor: Actor) -> Result<BridgeType> {
     Ok(match actor.into_kinds() {
         ActorKind::Vehicle(vehicle) => VehicleBridge::get_bridge_type(vehicle)?,
         ActorKind::Sensor(sensor) => SensorBridge::get_bridge_type(sensor)?,
-        ActorKind::TrafficLight(_) => BridgeType::BridgeTypeTrafficLight,
-        ActorKind::TrafficSign(_) => BridgeType::BridgeTypeTrafficSign,
-        ActorKind::Other(_) => BridgeType::BridgeTypeOther,
+        ActorKind::TrafficLight(_) => BridgeType::TrafficLight,
+        ActorKind::TrafficSign(_) => BridgeType::TrafficSign,
+        ActorKind::Other(_) => BridgeType::Other,
     })
 }
 

@@ -25,6 +25,7 @@ use zenoh::{Config, Wait};
 // The default interval between ticks
 const DEFAULT_CARLA_TICK_INTERVAL_MS: &str = "50";
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, PartialEq, ValueEnum)]
 enum Mode {
     /// Using zenoh-bridge-dds
@@ -141,18 +142,18 @@ fn main() -> Result<()> {
             for id in added_ids {
                 let actor = actor_list.remove(&id).expect("ID should be in the list!");
                 let bridge = match bridge::actor_bridge::get_bridge_type(actor.clone()) {
-                    Ok(BridgeType::BridgeTypeVehicle(vehicle_name)) => {
+                    Ok(BridgeType::Vehicle(vehicle_name)) => {
                         let aw = autoware_list.entry(vehicle_name.clone()).or_insert(
                             autoware::Autoware::new(vehicle_name.clone(), mode == Mode::ROS2),
                         );
                         bridge::actor_bridge::create_bridge(
                             z_session.clone(),
                             actor,
-                            BridgeType::BridgeTypeVehicle(vehicle_name),
+                            BridgeType::Vehicle(vehicle_name),
                             aw,
                         )?
                     }
-                    Ok(BridgeType::BridgeTypeSensor(vehicle_name, sensor_type, sensor_name)) => {
+                    Ok(BridgeType::Sensor(vehicle_name, sensor_type, sensor_name)) => {
                         let aw = autoware_list.entry(vehicle_name.clone()).or_insert(
                             autoware::Autoware::new(vehicle_name.clone(), mode == Mode::ROS2),
                         );
@@ -160,7 +161,7 @@ fn main() -> Result<()> {
                         bridge::actor_bridge::create_bridge(
                             z_session.clone(),
                             actor,
-                            BridgeType::BridgeTypeSensor(vehicle_name, sensor_type, sensor_name),
+                            BridgeType::Sensor(vehicle_name, sensor_type, sensor_name),
                             aw,
                         )?
                     }

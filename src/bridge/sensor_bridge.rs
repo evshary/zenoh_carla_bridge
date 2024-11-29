@@ -104,11 +104,7 @@ impl SensorBridge {
         let sensor_type: SensorType = sensor_type_id.parse().or(Err(BridgeError::CarlaIssue(
             "Unable to recognize sensor type",
         )))?;
-        Ok(BridgeType::BridgeTypeSensor(
-            vehicle_name,
-            sensor_type,
-            sensor_name,
-        ))
+        Ok(BridgeType::Sensor(vehicle_name, sensor_type, sensor_name))
     }
     pub fn new(
         z_session: Arc<Session>,
@@ -117,7 +113,7 @@ impl SensorBridge {
         autoware: &Autoware,
     ) -> Result<SensorBridge> {
         let (vehicle_name, sensor_type, sensor_name) = match bridge_type {
-            BridgeType::BridgeTypeSensor(v, t, s) => (v, t, s),
+            BridgeType::Sensor(v, t, s) => (v, t, s),
             _ => panic!("Should never happen!"),
         };
 
@@ -180,13 +176,13 @@ fn register_camera_rgb(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = image_publisher.put(sensor_data).wait() {
-                    log::error!("Failed to publish to {}", raw_key);
+                if let Err(e) = image_publisher.put(sensor_data).wait() {
+                    log::error!("Failed to publish to {}: {:?}", raw_key, e);
                 }
             }
             Ok((MessageType::InfoData, info_data)) => {
-                if let Err(_) = info_publisher.put(info_data).wait() {
-                    log::error!("Failed to publish to {}", info_key);
+                if let Err(e) = info_publisher.put(info_data).wait() {
+                    log::error!("Failed to publish to {}: {:?}", info_key, e);
                 }
             }
             _ => {
@@ -255,8 +251,8 @@ fn register_lidar_raycast(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = pcd_publisher.put(sensor_data).wait() {
-                    log::error!("Failed to publish to {}", key);
+                if let Err(e) = pcd_publisher.put(sensor_data).wait() {
+                    log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }
             _ => {
@@ -294,8 +290,8 @@ fn register_lidar_raycast_semantic(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = pcd_publisher.put(sensor_data).wait() {
-                    log::error!("Failed to publish to {}", key);
+                if let Err(e) = pcd_publisher.put(sensor_data).wait() {
+                    log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }
             _ => {
@@ -333,8 +329,8 @@ fn register_imu(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = imu_publisher.put(sensor_data).wait() {
-                    log::error!("Failed to publish to {}", key);
+                if let Err(e) = imu_publisher.put(sensor_data).wait() {
+                    log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }
             _ => {
@@ -371,8 +367,8 @@ fn register_gnss(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(_) = gnss_publisher.put(sensor_data).wait() {
-                    log::error!("Failed to publish to {}", key);
+                if let Err(e) = gnss_publisher.put(sensor_data).wait() {
+                    log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }
             _ => {
@@ -684,11 +680,11 @@ fn gnss_callback(
         longitude: measure.longitude(),
         altitude: measure.attitude() + 17.0,
         status: sensor_msgs::NavSatStatus {
-            status: GnssStatus::StatusSbasFix as i8,
-            service: GnssService::ServiceGps as u16
-                | GnssService::ServiceGlonass as u16
-                | GnssService::ServiceCompass as u16
-                | GnssService::ServiceGalileo as u16,
+            status: GnssStatus::SbasFix as i8,
+            service: GnssService::Gps as u16
+                | GnssService::Glonass as u16
+                | GnssService::Compass as u16
+                | GnssService::Galileo as u16,
         },
         position_covariance: [0.0; 9],
         position_covariance_type: 0, // unknown type
@@ -710,8 +706,8 @@ impl Drop for SensorBridge {
         if self.sensor_type != SensorType::Collision && self.sensor_type != SensorType::NotSupport {
             // Not sure why the tx doesn't release in sensor callback, so rx can't use RecvErr to close the thread
             // I create another message type to notify the thread to close
-            if let Err(_) = self.tx.send((MessageType::StopThread, vec![])) {
-                log::error!("Unable to stop the thread")
+            if let Err(e) = self.tx.send((MessageType::StopThread, vec![])) {
+                log::error!("Unable to stop the thread: {:?}", e);
             }
         }
     }

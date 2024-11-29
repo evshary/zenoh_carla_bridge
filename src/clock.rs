@@ -1,7 +1,9 @@
 use crate::error::Result;
 use cdr::{CdrLe, Infinite};
-use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use zenoh::{pubsub::Publisher, Session, Wait};
 use zenoh_ros_type::{builtin_interfaces, rosgraph_msgs};
 
@@ -20,7 +22,7 @@ impl<'a> SimulatorClock<'a> {
         let time = if let Some(sec) = timestamp {
             builtin_interfaces::Time {
                 sec: sec.floor() as i32,
-                nanosec: (sec.fract() * 1000_000_000_f64) as u32,
+                nanosec: (sec.fract() * 1_000_000_000_f64) as u32,
             }
         } else {
             // If there is no timestamp, use system time

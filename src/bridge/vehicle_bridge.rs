@@ -66,7 +66,7 @@ impl<'a> VehicleBridge<'a> {
 
         log::info!("Detect a vehicle {vehicle_name}");
 
-        Ok(BridgeType::BridgeTypeVehicle(vehicle_name))
+        Ok(BridgeType::Vehicle(vehicle_name))
     }
 
     pub fn new(
@@ -76,7 +76,7 @@ impl<'a> VehicleBridge<'a> {
         autoware: &Autoware,
     ) -> Result<VehicleBridge<'a>> {
         let vehicle_name = match bridge_type {
-            BridgeType::BridgeTypeVehicle(v) => v,
+            BridgeType::Vehicle(v) => v,
             _ => panic!("Should never happen!"),
         };
 
@@ -269,7 +269,7 @@ impl<'a> VehicleBridge<'a> {
         let control_msg = ControlModeReport {
             stamp: Time {
                 sec: timestamp.floor() as i32,
-                nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
+                nanosec: (timestamp.fract() * 1_000_000_000_f64) as u32,
             },
             mode,
         };
@@ -283,7 +283,7 @@ impl<'a> VehicleBridge<'a> {
         let turnindicator_msg = TurnIndicatorsReport {
             stamp: Time {
                 sec: timestamp.floor() as i32,
-                nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
+                nanosec: (timestamp.fract() * 1_000_000_000_f64) as u32,
             },
             report: turn_indicators_report::DISABLE,
         };
@@ -297,7 +297,7 @@ impl<'a> VehicleBridge<'a> {
         let hazardlight_msg = HazardLightsReport {
             stamp: Time {
                 sec: timestamp.floor() as i32,
-                nanosec: (timestamp.fract() * 1000_000_000_f64) as u32,
+                nanosec: (timestamp.fract() * 1_000_000_000_f64) as u32,
             },
             report: hazard_lights_report::DISABLE,
         };
@@ -368,7 +368,7 @@ impl<'a> VehicleBridge<'a> {
     }
 }
 
-impl<'a> ActorBridge for VehicleBridge<'a> {
+impl ActorBridge for VehicleBridge<'_> {
     fn step(&mut self, timestamp: f64) -> Result<()> {
         self.pub_current_velocity(timestamp)?;
         self.pub_current_steer(timestamp)?;
@@ -381,7 +381,7 @@ impl<'a> ActorBridge for VehicleBridge<'a> {
     }
 }
 
-impl<'a> Drop for VehicleBridge<'a> {
+impl Drop for VehicleBridge<'_> {
     fn drop(&mut self) {
         log::info!("Remove vehicle name {}", self.vehicle_name());
     }
