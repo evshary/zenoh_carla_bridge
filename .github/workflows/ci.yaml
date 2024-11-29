@@ -18,6 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  RUST_TOOLCHAIN: ${{ vars.RUST_TOOLCHAIN || 'stable' }}
   CARGO_TERM_COLOR: always
   # To build on Ubuntu 22.04
   LLVM_CONFIG_PATH: /usr/bin/llvm-config-12
@@ -26,7 +27,7 @@ env:
   CLANG_PATH: /usr/bin/clang-12
 
 jobs:
-  build:
+  build_test:
     runs-on: ubuntu-22.04
     steps:
       - name: Install clang
