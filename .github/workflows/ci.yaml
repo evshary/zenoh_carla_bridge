@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "examples/**"
+      - "Cargo.*"
+      - ".github/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # To build on Ubuntu 22.04
+  LLVM_CONFIG_PATH: /usr/bin/llvm-config-12
+  LIBCLANG_PATH: /usr/lib/llvm-12/lib
+  LIBCLANG_STATIC_PATH: /usr/lib/llvm-12/lib
+  CLANG_PATH: /usr/bin/clang-12
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install clang
+        run: sudo apt-get install -y clang-12 libclang-12-dev
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: 
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - name: Run cargo check
+        run: |
+          cargo check --all --tests
+      - name: Run cargo clippy
+        run: |
+          cargo clippy --version
+          cargo clippy --all-targets -- -W warnings -D warnings
+      - name: Create Documentation
+        run: |
+          cargo doc --no-deps --all-features
+      - name: Run doc tests
+        run: |
+          cargo test
