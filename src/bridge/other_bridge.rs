@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
+use carla::client::Actor;
+use zenoh::Session;
+
 use super::actor_bridge::ActorBridge;
 use crate::error::Result;
-use carla::client::Actor;
-use std::sync::Arc;
-use zenoh::Session;
 
 pub struct OtherActorBridge {
     _actor: Actor,

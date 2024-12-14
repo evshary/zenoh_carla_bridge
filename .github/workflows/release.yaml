@@ -25,32 +25,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # README - we later need the download_url output of the upload step
-      - name: Upload README to release
-        uses: svenstaro/upload-release-action@v2
-        id: upload_readme
+      - name: 'Create Release'
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: README.md
-          tag: ${{ github.ref }}
-
-      - name: Gets latest created release info
-        id: latest_release_info
-        uses: joutvhu/get-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Collect all artifacts
-        uses: anotherdaniel/quevee@v0.4.1
-        id: quevee_manifest
-        with:
-          release_url: ${{ steps.latest_release_info.outputs.html_url }}
-          artifacts_readme: ${{ steps.upload_readme.outputs.browser_download_url }}
-
-      - name: Upload manifest to release
-        uses: svenstaro/upload-release-action@v2
-        id: upload_quality_manifest
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ steps.quevee_manifest.outputs.manifest_file }}
-          tag: ${{ github.ref }}
+          generate_release_notes: true
+          files: |
+            README.md
+          token: ${{ secrets.GITHUB_TOKEN }}

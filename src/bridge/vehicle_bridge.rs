@@ -1,9 +1,5 @@
-use super::actor_bridge::{ActorBridge, BridgeType};
-use crate::{
-    autoware::Autoware,
-    error::{BridgeError, Result},
-    utils,
-};
+use std::sync::{atomic::Ordering, Arc};
+
 use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
 use carla::{
@@ -11,7 +7,6 @@ use carla::{
     rpc::{VehicleAckermannControl, VehicleWheelLocation},
 };
 use cdr::{CdrLe, Infinite};
-use std::sync::{atomic::Ordering, Arc};
 use zenoh::{
     pubsub::{Publisher, Subscriber},
     Session, Wait,
@@ -25,6 +20,13 @@ use zenoh_ros_type::{
     },
     builtin_interfaces::Time,
     tier4_control_msgs::{gate_mode_data, GateMode},
+};
+
+use super::actor_bridge::{ActorBridge, BridgeType};
+use crate::{
+    autoware::Autoware,
+    error::{BridgeError, Result},
+    utils,
 };
 
 pub struct VehicleBridge<'a> {

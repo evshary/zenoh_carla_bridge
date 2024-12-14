@@ -5,6 +5,13 @@ mod error;
 mod types;
 mod utils;
 
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+    thread,
+    time::Duration,
+};
+
 use bridge::actor_bridge::{ActorBridge, BridgeType};
 use carla::{
     client::{ActorBase, Client},
@@ -14,12 +21,6 @@ use clap::{Parser, ValueEnum};
 use clock::SimulatorClock;
 use error::{BridgeError, Result};
 use serde_json::json;
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-    thread,
-    time::Duration,
-};
 use zenoh::{Config, Wait};
 
 // The default interval between ticks

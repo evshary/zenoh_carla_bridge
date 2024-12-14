@@ -1,11 +1,13 @@
-use crate::error::Result;
-use cdr::{CdrLe, Infinite};
 use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
+
+use cdr::{CdrLe, Infinite};
 use zenoh::{pubsub::Publisher, Session, Wait};
 use zenoh_ros_type::{builtin_interfaces, rosgraph_msgs};
+
+use crate::error::Result;
 
 pub struct SimulatorClock<'a> {
     publisher_clock: Publisher<'a>,

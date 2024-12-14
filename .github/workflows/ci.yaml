@@ -11,6 +11,8 @@ on:
       - "examples/**"
       - "Cargo.*"
       - ".github/**"
+  schedule:
+    - cron: '0 1 * * *'
   # Able to call by other workflow
   workflow_call:
   # Able to call on GitHub
@@ -52,10 +54,13 @@ jobs:
       - name: Run cargo check
         run: |
           cargo check --all --tests
+      - name: Check code format
+        run: |
+          cargo fmt --check -- --config "unstable_features=true,imports_granularity=Crate,group_imports=StdExternalCrate"
       - name: Run cargo clippy
         run: |
           cargo clippy --version
-          cargo clippy --all-targets -- -W warnings -D warnings
+          cargo clippy --all-targets --all-features -- -W warnings -D warnings
       - name: Create Documentation
         run: |
           cargo doc --no-deps --all-features
