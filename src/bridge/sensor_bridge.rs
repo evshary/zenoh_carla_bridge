@@ -1,10 +1,14 @@
-use super::actor_bridge::{ActorBridge, BridgeType};
-use crate::{
-    autoware::Autoware,
-    error::{BridgeError, Result},
-    types::{GnssService, GnssStatus, PointFieldType},
-    utils,
+use std::{
+    convert::Infallible,
+    mem,
+    str::FromStr,
+    sync::{
+        mpsc::{self, Receiver, Sender},
+        Arc,
+    },
+    thread,
 };
+
 use carla::{
     client::{ActorBase, Sensor},
     geom::Location,
@@ -18,18 +22,16 @@ use carla::{
 };
 use cdr::{CdrLe, Infinite};
 use nalgebra::{coordinates::XYZ, UnitQuaternion};
-use std::{
-    convert::Infallible,
-    mem,
-    str::FromStr,
-    sync::{
-        mpsc::{self, Receiver, Sender},
-        Arc,
-    },
-    thread,
-};
 use zenoh::{Session, Wait};
 use zenoh_ros_type::{geometry_msgs, sensor_msgs, std_msgs};
+
+use super::actor_bridge::{ActorBridge, BridgeType};
+use crate::{
+    autoware::Autoware,
+    error::{BridgeError, Result},
+    types::{GnssService, GnssStatus, PointFieldType},
+    utils,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SensorType {

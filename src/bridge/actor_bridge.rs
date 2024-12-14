@@ -1,3 +1,8 @@
+use std::sync::Arc;
+
+use carla::client::{Actor, ActorKind};
+use zenoh::Session;
+
 use super::{
     other_bridge::OtherActorBridge,
     sensor_bridge::{SensorBridge, SensorType},
@@ -6,9 +11,6 @@ use super::{
     vehicle_bridge::VehicleBridge,
 };
 use crate::{autoware::Autoware, error::Result};
-use carla::client::{Actor, ActorKind};
-use std::sync::Arc;
-use zenoh::Session;
 
 #[derive(Debug)]
 pub enum BridgeType {
