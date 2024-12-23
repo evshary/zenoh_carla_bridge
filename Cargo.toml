@@ -8,19 +8,19 @@ version = "0.12.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-atomic_float = "0.1.0"
+atomic_float = "1.1.0"
 arc-swap = "1.6.0"
 carla = "0.11.1"
 cdr = "0.2.4"
-clap = { version = "4.4.2", features = ["derive"] }
+clap = { version = "4.5.23", features = ["derive"] }
 log = "0.4.20"
 nalgebra = "0.32.3"
-ndarray = "0.15.6"
+ndarray = "0.16.1"
 pretty_env_logger = "0.5.0"
-serde = "1.0.188"
-serde_derive = "1.0.188"
-serde_json = "1.0"
-thiserror = "1.0.48"
-zenoh = "1.0.2"
+serde = "1.0.216"
+serde_derive = "1.0.216"
+serde_json = "1.0.134"
+thiserror = "2.0.9"
+zenoh = "1.1.0"
 zenoh-ros-type = "0.3.4"
 #zenoh-ros-type = { git = "https://github.com/evshary/zenoh-ros-type", branch = "main" }
