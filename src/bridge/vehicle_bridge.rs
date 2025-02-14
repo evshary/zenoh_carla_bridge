@@ -7,6 +7,7 @@ use carla::{
     rpc::{VehicleControl, VehicleWheelLocation},
 };
 use cdr::{CdrLe, Infinite};
+use interp::{interp, InterpMode};
 use zenoh::{
     pubsub::{Publisher, Subscriber},
     Session, Wait,
@@ -17,10 +18,10 @@ use zenoh_ros_type::{
         ControlModeReport, GearCommand, GearReport, HazardLightsReport, SteeringReport,
         TurnIndicatorsReport, VelocityReport,
     },
-    builtin_interfaces::Time, 
+    builtin_interfaces::Time,
     std_msgs::Header,
     tier4_control_msgs::{gate_mode_data, GateMode},
-    tier4_vehicle_msgs::{ActuationCommand, ActuationCommandStamped}
+    tier4_vehicle_msgs::{ActuationCommand, ActuationCommandStamped},
 };
 
 use super::actor_bridge::{ActorBridge, BridgeType};
@@ -29,8 +30,6 @@ use crate::{
     error::{BridgeError, Result},
     utils,
 };
-
-use interp::{interp, InterpMode};
 
 pub struct VehicleBridge<'a> {
     vehicle_name: String,
@@ -108,7 +107,7 @@ impl<'a> VehicleBridge<'a> {
         // TODO: We can use default value here
         let current_actuation_cmd = Arc::new(ArcSwap::from_pointee(ActuationCommandStamped {
             header: Header {
-                stamp: Time { sec: 0, nanosec: 0 }, 
+                stamp: Time { sec: 0, nanosec: 0 },
                 frame_id: "".to_string(),
             },
             actuation: ActuationCommand {
@@ -323,7 +322,7 @@ impl<'a> VehicleBridge<'a> {
         // Default states
         let mut reverse = false;
         let mut hand_brake = false;
-    
+
         match **self.current_gear.load() {
             gear_report::DRIVE => { /* Do nothing */ }
             gear_report::REVERSE => {
@@ -346,30 +345,31 @@ impl<'a> VehicleBridge<'a> {
         let v_y: Vec<f32> = steering_curve.iter().map(|v| v[1]).collect();
 
         let current_speed = self.actor.velocity().x.abs();
-        let max_steer_ratio = interp(&v_x, &v_y, current_speed, &InterpMode::default(),);
+        let max_steer_ratio = interp(&v_x, &v_y, current_speed, &InterpMode::default());
 
-        let max_steer_angle_rad = self.actor.physics_control().wheels[0].max_steer_angle.to_radians();
+        let max_steer_angle_rad = self.actor.physics_control().wheels[0]
+            .max_steer_angle
+            .to_radians();
         let steer = -steer_cmd as f32 * max_steer_ratio * max_steer_angle_rad;
 
-        self.actor
-            .apply_control(&VehicleControl {
-                throttle: accel_cmd as f32,
-                steer,
-                brake: brake_cmd as f32,
-                hand_brake,
-                reverse,
-                manual_gear_shift: true,
-                gear: 0
-            });
-            log::debug!(
-                "Bridge => Carla: throttle={:.3}, steer={:.3}, brake={:.3}, hand_brake={}, reverse={}",
-                accel_cmd as f32,
-                steer,
-                brake_cmd as f32,
-                hand_brake,
-                reverse,
-            );
-        }
+        self.actor.apply_control(&VehicleControl {
+            throttle: accel_cmd as f32,
+            steer,
+            brake: brake_cmd as f32,
+            hand_brake,
+            reverse,
+            manual_gear_shift: true,
+            gear: 0,
+        });
+        log::debug!(
+            "Bridge => Carla: throttle={:.3}, steer={:.3}, brake={:.3}, hand_brake={}, reverse={}",
+            accel_cmd as f32,
+            steer,
+            brake_cmd as f32,
+            hand_brake,
+            reverse,
+        );
+    }
 
     pub fn vehicle_name(&self) -> &str {
         &self.vehicle_name
