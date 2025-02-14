@@ -4,7 +4,7 @@ use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
 use carla::{
     client::{ActorBase, Vehicle},
-    rpc::{VehicleAckermannControl, VehicleWheelLocation},
+    rpc::{VehicleControl, VehicleWheelLocation},
 };
 use cdr::{CdrLe, Infinite};
 use zenoh::{
@@ -12,14 +12,15 @@ use zenoh::{
     Session, Wait,
 };
 use zenoh_ros_type::{
-    autoware_control_msgs::{Control, Lateral, Longitudinal},
     autoware_vehicle_msgs::{
         control_mode_report, gear_report, hazard_lights_report, turn_indicators_report,
         ControlModeReport, GearCommand, GearReport, HazardLightsReport, SteeringReport,
         TurnIndicatorsReport, VelocityReport,
     },
-    builtin_interfaces::Time,
+    builtin_interfaces::Time, 
+    std_msgs::Header,
     tier4_control_msgs::{gate_mode_data, GateMode},
+    tier4_vehicle_msgs::{ActuationCommand, ActuationCommandStamped}
 };
 
 use super::actor_bridge::{ActorBridge, BridgeType};
@@ -29,10 +30,12 @@ use crate::{
     utils,
 };
 
+use interp::{interp, InterpMode};
+
 pub struct VehicleBridge<'a> {
     vehicle_name: String,
     actor: Vehicle,
-    _subscriber_control_cmd: Subscriber<()>,
+    _subscriber_actuation_cmd: Subscriber<()>,
     _subscriber_gear_cmd: Subscriber<()>,
     _subscriber_gate_mode: Subscriber<()>,
     publisher_velocity: Publisher<'a>,
@@ -42,7 +45,7 @@ pub struct VehicleBridge<'a> {
     publisher_turnindicator: Publisher<'a>,
     publisher_hazardlight: Publisher<'a>,
     velocity: Arc<AtomicF32>,
-    current_ackermann_cmd: Arc<ArcSwap<Control>>,
+    current_actuation_cmd: Arc<ArcSwap<ActuationCommandStamped>>,
     current_gear: Arc<ArcSwap<u8>>,
     current_gate_mode: Arc<ArcSwap<GateMode>>,
 }
@@ -103,34 +106,25 @@ impl<'a> VehicleBridge<'a> {
         let velocity = Arc::new(AtomicF32::new(0.0));
 
         // TODO: We can use default value here
-        let current_ackermann_cmd = Arc::new(ArcSwap::from_pointee(Control {
-            stamp: Time { sec: 0, nanosec: 0 },
-            control_time: Time { sec: 0, nanosec: 0 },
-            lateral: Lateral {
-                stamp: Time { sec: 0, nanosec: 0 },
-                control_time: Time { sec: 0, nanosec: 0 },
-                steering_tire_angle: 0.0,
-                steering_tire_rotation_rate: 0.0,
-                is_defined_steering_tire_rotation_rate: false,
+        let current_actuation_cmd = Arc::new(ArcSwap::from_pointee(ActuationCommandStamped {
+            header: Header {
+                stamp: Time { sec: 0, nanosec: 0 }, 
+                frame_id: "".to_string(),
             },
-            longitudinal: Longitudinal {
-                stamp: Time { sec: 0, nanosec: 0 },
-                control_time: Time { sec: 0, nanosec: 0 },
-                velocity: 0.0,
-                acceleration: 0.0,
-                jerk: 0.0,
-                is_defined_acceleration: false,
-                is_defined_jerk: false,
+            actuation: ActuationCommand {
+                accel_cmd: 0.0,
+                brake_cmd: 0.0,
+                steer_cmd: 0.0,
             },
         }));
-        let cloned_cmd = current_ackermann_cmd.clone();
-        let subscriber_control_cmd = z_session
-            .declare_subscriber(autoware.topic_control_cmd.clone())
+        let cloned_cmd = current_actuation_cmd.clone();
+        let subscriber_actuation_cmd = z_session
+            .declare_subscriber(autoware.topic_actuation_cmd.clone())
             .callback_mut(move |sample| {
-                let result: Result<Control, _> =
+                let result: Result<ActuationCommandStamped, _> =
                     cdr::deserialize_from(sample.payload().reader(), cdr::size::Infinite);
                 let Ok(cmd) = result else {
-                    log::error!("Unable to parse data from /control/command/control_cmd");
+                    log::error!("Unable to parse data from /control/command/actuation_cmd");
                     return;
                 };
                 cloned_cmd.store(Arc::new(cmd));
@@ -182,7 +176,7 @@ impl<'a> VehicleBridge<'a> {
         Ok(VehicleBridge {
             vehicle_name,
             actor,
-            _subscriber_control_cmd: subscriber_control_cmd,
+            _subscriber_actuation_cmd: subscriber_actuation_cmd,
             _subscriber_gear_cmd: subscriber_gear_cmd,
             _subscriber_gate_mode: subscriber_gate_mode,
             publisher_velocity,
@@ -192,7 +186,7 @@ impl<'a> VehicleBridge<'a> {
             publisher_turnindicator,
             publisher_hazardlight,
             velocity,
-            current_ackermann_cmd,
+            current_actuation_cmd,
             current_gear,
             current_gate_mode,
         })
@@ -309,61 +303,73 @@ impl<'a> VehicleBridge<'a> {
     }
 
     fn update_carla_control(&mut self) {
-        let Control {
-            lateral:
-                Lateral {
-                    steering_tire_angle,
-                    steering_tire_rotation_rate,
-                    ..
-                },
-            longitudinal:
-                Longitudinal {
-                    mut velocity,
-                    mut acceleration,
-                    mut jerk,
-                    ..
+        let ActuationCommandStamped {
+            actuation:
+                ActuationCommand {
+                    mut accel_cmd,
+                    mut brake_cmd,
+                    mut steer_cmd,
                 },
             ..
-        } = **self.current_ackermann_cmd.load();
+        } = **self.current_actuation_cmd.load();
+
+        log::debug!(
+            "Autoware => Bridge: accel_cmd={:.3}, brake_cmd={:.3}, steer_cmd={:.3}",
+            accel_cmd,
+            brake_cmd,
+            steer_cmd,
+        );
+
+        // Default states
+        let mut reverse = false;
+        let mut hand_brake = false;
+    
         match **self.current_gear.load() {
             gear_report::DRIVE => { /* Do nothing */ }
             gear_report::REVERSE => {
-                /* the speed from current_ackermann_cmd will be negative while reverse, so do nothing */
+                /* The speed from current_actuation_cmd may be negative while reverse */
+                reverse = true;
             }
             gear_report::PARK => {
                 /* Force the vehicle to stop */
-                velocity = 0.0;
-                acceleration = 0.0;
-                jerk = 0.0;
+                accel_cmd = 0.0;
+                brake_cmd = 0.0;
+                steer_cmd = 0.0;
+                hand_brake = true;
             }
             _ => { /* Do nothing */ }
         };
-        log::debug!(
-            "Autoware => Carla: speed:{} accel:{} steering_tire_angle:{}",
-            velocity,
-            acceleration,
-            -steering_tire_angle.to_degrees()
-        );
-        let current_speed = self.actor.velocity().norm();
-        let (_, pitch_radians, _) = self.actor.transform().rotation.euler_angles();
-        let steer = {
-            let max_steer_angle = 69.999;
-            (-steering_tire_angle.to_degrees() / max_steer_angle).clamp(-1.0, 1.0)
-        };
+
+        // Convert base on steer curve and speed of the vehicle
+        let steering_curve = self.actor.physics_control().steering_curve;
+        let v_x: Vec<f32> = steering_curve.iter().map(|v| v[0]).collect();
+        let v_y: Vec<f32> = steering_curve.iter().map(|v| v[1]).collect();
+
+        let current_speed = self.actor.velocity().x.abs();
+        let max_steer_ratio = interp(&v_x, &v_y, current_speed, &InterpMode::default(),);
+
+        let max_steer_angle_rad = self.actor.physics_control().wheels[0].max_steer_angle.to_radians();
+        let steer = -steer_cmd as f32 * max_steer_ratio * max_steer_angle_rad;
+
         self.actor
-            .apply_ackermann_control(&VehicleAckermannControl {
+            .apply_control(&VehicleControl {
+                throttle: accel_cmd as f32,
                 steer,
-                steer_speed: steering_tire_rotation_rate,
-                speed: velocity,
-                acceleration,
-                jerk,
+                brake: brake_cmd as f32,
+                hand_brake,
+                reverse,
+                manual_gear_shift: true,
+                gear: 0
             });
-        log::debug!(
-            "Autoware => Carla: current_speed:{} pitch_radians:{}",
-            current_speed,
-            pitch_radians
-        );
-    }
+            log::debug!(
+                "Bridge => Carla: throttle={:.3}, steer={:.3}, brake={:.3}, hand_brake={}, reverse={}",
+                accel_cmd as f32,
+                steer,
+                brake_cmd as f32,
+                hand_brake,
+                reverse,
+            );
+        }
 
     pub fn vehicle_name(&self) -> &str {
         &self.vehicle_name

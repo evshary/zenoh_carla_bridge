@@ -15,7 +15,7 @@ pub struct Autoware {
     pub topic_turn_indicators_status: String,
     pub topic_hazard_lights_status: String,
     // Vehicle subscribe topic
-    pub topic_control_cmd: String,
+    pub topic_actuation_cmd: String,
     pub topic_gear_cmd: String,
     pub topic_current_gate_mode: String,
     pub topic_turn_indicators_cmd: String,
@@ -48,7 +48,7 @@ impl Autoware {
             topic_turn_indicators_status: prefix.clone() + "vehicle/status/turn_indicators_status",
             topic_hazard_lights_status: prefix.clone() + "vehicle/status/hazard_lights_status",
             // Vehicle subscribe topic
-            topic_control_cmd: prefix.clone() + "control/command/control_cmd",
+            topic_actuation_cmd: prefix.clone() + "control/command/actuation_cmd",
             topic_gear_cmd: prefix.clone() + "control/command/gear_cmd",
             topic_current_gate_mode: prefix.clone() + "control/current_gate_mode",
             topic_turn_indicators_cmd: prefix.clone() + "control/command/turn_indicators_cmd",
