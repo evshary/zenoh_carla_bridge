@@ -358,7 +358,7 @@ impl<'a> VehicleBridge<'a> {
             brake: brake_cmd as f32,
             hand_brake,
             reverse,
-            manual_gear_shift: true,
+            manual_gear_shift: false,
             gear: 0,
         });
         log::debug!(
