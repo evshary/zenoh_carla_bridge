@@ -4318,8 +4318,9 @@ dependencies = [
 
 [[package]]
 name = "zenoh-ros-derive"
-version = "0.3.5"
-source = "git+https://github.com/hsule/zenoh-ros-type?branch=main#2451ed5a54281c880f99d6bfaa9889fe2cfd5271"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42a2636abacb33b11db5703124f26522f8e47e6fe6b5b92eb305c94c88ece188"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4328,8 +4329,9 @@ dependencies = [
 
 [[package]]
 name = "zenoh-ros-type"
-version = "0.3.5"
-source = "git+https://github.com/hsule/zenoh-ros-type?branch=main#2451ed5a54281c880f99d6bfaa9889fe2cfd5271"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c59e74d6fe7bfc04fc848a894d195dc0fbf0e790683f9d5fc4757cfd9ebaa68"
 dependencies = [
  "cdr",
  "paste",
