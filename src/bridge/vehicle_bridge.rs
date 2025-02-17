@@ -21,7 +21,9 @@ use zenoh_ros_type::{
     builtin_interfaces::Time,
     std_msgs::Header,
     tier4_control_msgs::{gate_mode_data, GateMode},
-    tier4_vehicle_msgs::{ActuationCommand, ActuationCommandStamped},
+    tier4_vehicle_msgs::{
+        ActuationCommand, ActuationCommandStamped, ActuationStatus, ActuationStatusStamped,
+    },
 };
 
 use super::actor_bridge::{ActorBridge, BridgeType};
@@ -37,6 +39,7 @@ pub struct VehicleBridge<'a> {
     _subscriber_actuation_cmd: Subscriber<()>,
     _subscriber_gear_cmd: Subscriber<()>,
     _subscriber_gate_mode: Subscriber<()>,
+    publisher_actuation: Publisher<'a>,
     publisher_velocity: Publisher<'a>,
     publisher_steer: Publisher<'a>,
     publisher_gear: Publisher<'a>,
@@ -84,6 +87,9 @@ impl<'a> VehicleBridge<'a> {
             _ => panic!("Should never happen!"),
         };
 
+        let publisher_actuation = z_session
+            .declare_publisher(autoware.topic_actuation_status.clone())
+            .wait()?;
         let publisher_velocity = z_session
             .declare_publisher(autoware.topic_velocity_status.clone())
             .wait()?;
@@ -178,6 +184,7 @@ impl<'a> VehicleBridge<'a> {
             _subscriber_actuation_cmd: subscriber_actuation_cmd,
             _subscriber_gear_cmd: subscriber_gear_cmd,
             _subscriber_gate_mode: subscriber_gate_mode,
+            publisher_actuation,
             publisher_velocity,
             publisher_steer,
             publisher_gear,
@@ -189,6 +196,29 @@ impl<'a> VehicleBridge<'a> {
             current_gear,
             current_gate_mode,
         })
+    }
+
+    fn pub_current_actuation(&mut self, timestamp: f64) -> Result<()> {
+        let control = self.actor.control();
+        let mut header = utils::create_ros_header(Some(timestamp));
+        header.frame_id = String::from("base_link");
+        let actuation_msg = ActuationStatusStamped {
+            header,
+            status: ActuationStatus {
+                accel_status: control.throttle as f64,
+                brake_status: control.brake as f64,
+                steer_status: -control.steer as f64,
+            },
+        };
+        log::debug!(
+            "Carla => Autoware: accel_status={:.3}, brake_status={:.3}, steer_status={:.3}",
+            control.throttle,
+            control.brake,
+            -control.steer
+        );
+        let encoded = cdr::serialize::<_, _, CdrLe>(&actuation_msg, Infinite)?;
+        self.publisher_actuation.put(encoded).wait()?;
+        Ok(())
     }
 
     fn pub_current_velocity(&mut self, timestamp: f64) -> Result<()> {
@@ -378,6 +408,7 @@ impl<'a> VehicleBridge<'a> {
 
 impl ActorBridge for VehicleBridge<'_> {
     fn step(&mut self, timestamp: f64) -> Result<()> {
+        self.pub_current_actuation(timestamp)?;
         self.pub_current_velocity(timestamp)?;
         self.pub_current_steer(timestamp)?;
         self.pub_current_gear(timestamp)?;

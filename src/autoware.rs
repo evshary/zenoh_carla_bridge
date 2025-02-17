@@ -8,6 +8,7 @@ pub struct Autoware {
     pub prefix: String,
     pub _vehicle_name: String,
     // Vehicle publish topic
+    pub topic_actuation_status: String,
     pub topic_velocity_status: String,
     pub topic_steering_status: String,
     pub topic_gear_status: String,
@@ -41,6 +42,7 @@ impl Autoware {
             prefix: prefix.clone(),
             _vehicle_name: vehicle_name,
             // Vehicle publish topic
+            topic_actuation_status: prefix.clone() + "vehicle/status/actuation_status",
             topic_velocity_status: prefix.clone() + "vehicle/status/velocity_status",
             topic_steering_status: prefix.clone() + "vehicle/status/steering_status",
             topic_gear_status: prefix.clone() + "vehicle/status/gear_status",
