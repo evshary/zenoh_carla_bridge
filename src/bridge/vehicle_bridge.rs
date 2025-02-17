@@ -87,6 +87,7 @@ impl<'a> VehicleBridge<'a> {
             _ => panic!("Should never happen!"),
         };
 
+        // The actuation status is only used in accel_brake_map_calibrator; Autoware does not subscribe to it.
         let publisher_actuation = z_session
             .declare_publisher(autoware.topic_actuation_status.clone())
             .wait()?;
@@ -110,7 +111,7 @@ impl<'a> VehicleBridge<'a> {
             .wait()?;
         let velocity = Arc::new(AtomicF32::new(0.0));
 
-        // TODO: We can use default value here
+        // Using actuation instead of Ackermann to prevent mismatch with Autoware's speed logic and CARLA's motion constraints
         let current_actuation_cmd = Arc::new(ArcSwap::from_pointee(ActuationCommandStamped {
             header: Header {
                 stamp: Time { sec: 0, nanosec: 0 },
@@ -356,7 +357,7 @@ impl<'a> VehicleBridge<'a> {
         match **self.current_gear.load() {
             gear_report::DRIVE => { /* Do nothing */ }
             gear_report::REVERSE => {
-                /* The speed from current_actuation_cmd may be negative while reverse */
+                /* Set reverse to true for reverse gear */
                 reverse = true;
             }
             gear_report::PARK => {
@@ -369,7 +370,7 @@ impl<'a> VehicleBridge<'a> {
             _ => { /* Do nothing */ }
         };
 
-        // Convert base on steer curve and speed of the vehicle
+        // Convert steer_cmd base on steering curve and speed of the vehicle
         let steering_curve = self.actor.physics_control().steering_curve;
         let v_x: Vec<f32> = steering_curve.iter().map(|v| v[0]).collect();
         let v_y: Vec<f32> = steering_curve.iter().map(|v| v[1]).collect();
