@@ -1427,6 +1427,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "interp"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fabeabdae249b35184a54fe27bd59a2497e4739c7104edebe67f348e2d507e8a"
+dependencies = [
+ "itertools 0.14.0",
+ "num-traits",
+]
+
+[[package]]
 name = "ipnetwork"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1484,6 +1494,15 @@ name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
 dependencies = [
  "either",
 ]
@@ -4298,13 +4317,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "zenoh-ros-type"
-version = "0.3.4"
+name = "zenoh-ros-derive"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e27b522a99dc3fb45c0cf3816999c9dfe22273642d102410dc07b9cd8ddb0bb"
+checksum = "42a2636abacb33b11db5703124f26522f8e47e6fe6b5b92eb305c94c88ece188"
 dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
+name = "zenoh-ros-type"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c59e74d6fe7bfc04fc848a894d195dc0fbf0e790683f9d5fc4757cfd9ebaa68"
+dependencies = [
+ "cdr",
+ "paste",
  "serde",
  "serde_derive",
+ "zenoh",
+ "zenoh-ros-derive",
 ]
 
 [[package]]
@@ -4418,6 +4452,7 @@ dependencies = [
  "carla",
  "cdr",
  "clap",
+ "interp",
  "log",
  "nalgebra",
  "ndarray 0.16.1",

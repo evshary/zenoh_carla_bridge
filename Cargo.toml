@@ -13,6 +13,7 @@ arc-swap = "1.6.0"
 carla = "0.11.1"
 cdr = "0.2.4"
 clap = { version = "4.5.23", features = ["derive"] }
+interp = "2.0.2"
 log = "0.4.20"
 nalgebra = "0.32.3"
 ndarray = "0.16.1"
@@ -22,5 +23,5 @@ serde_derive = "1.0.216"
 serde_json = "1.0.134"
 thiserror = "2.0.9"
 zenoh = "1.1.0"
-zenoh-ros-type = "0.3.4"
-#zenoh-ros-type = { git = "https://github.com/evshary/zenoh-ros-type", branch = "main" }
+zenoh-ros-type = "0.3.6"
+# zenoh-ros-type = { git = "https://github.com/evshary/zenoh-ros-type", branch = "main" }
