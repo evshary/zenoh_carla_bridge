@@ -1,4 +1,5 @@
 use std::sync::{atomic::Ordering, Arc};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
@@ -50,6 +51,7 @@ pub struct VehicleBridge<'a> {
     current_actuation_cmd: Arc<ArcSwap<ActuationCommandStamped>>,
     current_gear: Arc<ArcSwap<u8>>,
     current_gate_mode: Arc<ArcSwap<GateMode>>,
+    attachment: Vec<u8>,
 }
 
 impl<'a> VehicleBridge<'a> {
@@ -179,6 +181,15 @@ impl<'a> VehicleBridge<'a> {
             })
             .wait()?;
 
+        // Initialize attachment
+        let seq_num: i64 = 1;
+        let mut attachment = seq_num.to_le_bytes().to_vec();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let timestamp: i64 = now.as_nanos() as i64;
+        attachment.extend_from_slice(&timestamp.to_le_bytes());
+        attachment.push(16u8);
+        attachment.extend_from_slice(&[0xAB; 16]);
+
         Ok(VehicleBridge {
             vehicle_name,
             actor,
@@ -196,6 +207,7 @@ impl<'a> VehicleBridge<'a> {
             current_actuation_cmd,
             current_gear,
             current_gate_mode,
+            attachment,
         })
     }
 
@@ -218,7 +230,7 @@ impl<'a> VehicleBridge<'a> {
             -control.steer
         );
         let encoded = cdr::serialize::<_, _, CdrLe>(&actuation_msg, Infinite)?;
-        self.publisher_actuation.put(encoded).wait()?;
+        self.publisher_actuation.put(encoded).attachment(self.attachment.clone()).wait()?;
         Ok(())
     }
 
@@ -249,7 +261,7 @@ impl<'a> VehicleBridge<'a> {
             velocity_msg.longitudinal_velocity
         );
         let encoded = cdr::serialize::<_, _, CdrLe>(&velocity_msg, Infinite)?;
-        self.publisher_velocity.put(encoded).wait()?;
+        self.publisher_velocity.put(encoded).attachment(self.attachment.clone()).wait()?;
         self.velocity
             .store(velocity_msg.longitudinal_velocity, Ordering::Relaxed);
 
@@ -269,7 +281,7 @@ impl<'a> VehicleBridge<'a> {
                 * -1.0,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&steer_msg, Infinite)?;
-        self.publisher_steer.put(encoded).wait()?;
+        self.publisher_steer.put(encoded).attachment(self.attachment.clone()).wait()?;
         Ok(())
     }
 
@@ -282,7 +294,7 @@ impl<'a> VehicleBridge<'a> {
             report: **self.current_gear.load(),
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&gear_msg, Infinite)?;
-        self.publisher_gear.put(encoded).wait()?;
+        self.publisher_gear.put(encoded).attachment(self.attachment.clone()).wait()?;
         Ok(())
     }
 
@@ -300,7 +312,7 @@ impl<'a> VehicleBridge<'a> {
             mode,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&control_msg, Infinite)?;
-        self.publisher_control.put(encoded).wait()?;
+        self.publisher_control.put(encoded).attachment(self.attachment.clone()).wait()?;
         Ok(())
     }
 
@@ -314,7 +326,7 @@ impl<'a> VehicleBridge<'a> {
             report: turn_indicators_report::DISABLE,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&turnindicator_msg, Infinite)?;
-        self.publisher_turnindicator.put(encoded).wait()?;
+        self.publisher_turnindicator.put(encoded).attachment(self.attachment.clone()).wait()?;
         Ok(())
     }
 
@@ -328,7 +340,7 @@ impl<'a> VehicleBridge<'a> {
             report: hazard_lights_report::DISABLE,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&hazardlight_msg, Infinite)?;
-        self.publisher_hazardlight.put(encoded).wait()?;
+        self.publisher_hazardlight.put(encoded).attachment(self.attachment.clone()).wait()?;
         Ok(())
     }
 

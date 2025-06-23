@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use crate::bridge::sensor_bridge::SensorType;
+use crate::Mode;
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Autoware {
-    pub _ros2: bool,
+    pub mode: Mode,
     pub prefix: String,
     pub _vehicle_name: String,
     // Vehicle publish topic
@@ -31,30 +32,36 @@ pub struct Autoware {
 }
 
 impl Autoware {
-    pub fn new(vehicle_name: String, ros2: bool) -> Autoware {
-        let prefix = if ros2 {
-            format!("{vehicle_name}/")
-        } else {
-            format!("{vehicle_name}/rt/")
+    pub fn new(vehicle_name: String, mode: Mode) -> Autoware {
+        let prefix = match mode {
+            Mode::ROS2 | Mode::RmwZenoh => format!("{}/", vehicle_name),
+            Mode::DDS => format!("{}/rt/", vehicle_name),
+        };
+        let topic = |base: &str| {
+            if mode == Mode::RmwZenoh {
+                format!("{prefix}*/{base}/*/*")
+            } else {
+                format!("{prefix}{base}")
+            }
         };
         Autoware {
-            _ros2: ros2,
+            mode: mode.clone(),
             prefix: prefix.clone(),
             _vehicle_name: vehicle_name,
             // Vehicle publish topic
-            topic_actuation_status: prefix.clone() + "vehicle/status/actuation_status",
-            topic_velocity_status: prefix.clone() + "vehicle/status/velocity_status",
-            topic_steering_status: prefix.clone() + "vehicle/status/steering_status",
-            topic_gear_status: prefix.clone() + "vehicle/status/gear_status",
-            topic_control_mode: prefix.clone() + "vehicle/status/control_mode",
-            topic_turn_indicators_status: prefix.clone() + "vehicle/status/turn_indicators_status",
-            topic_hazard_lights_status: prefix.clone() + "vehicle/status/hazard_lights_status",
+            topic_actuation_status:          topic("vehicle/status/actuation_status"),
+            topic_velocity_status:           topic("vehicle/status/velocity_status"),
+            topic_steering_status:           topic("vehicle/status/steering_status"),
+            topic_gear_status:               topic("vehicle/status/gear_status"),
+            topic_control_mode:              topic("vehicle/status/control_mode"),
+            topic_turn_indicators_status:    topic("vehicle/status/turn_indicators_status"),
+            topic_hazard_lights_status:      topic("vehicle/status/hazard_lights_status"),
             // Vehicle subscribe topic
-            topic_actuation_cmd: prefix.clone() + "control/command/actuation_cmd",
-            topic_gear_cmd: prefix.clone() + "control/command/gear_cmd",
-            topic_current_gate_mode: prefix.clone() + "control/current_gate_mode",
-            topic_turn_indicators_cmd: prefix.clone() + "control/command/turn_indicators_cmd",
-            topic_hazard_lights_cmd: prefix.clone() + "control/command/hazard_lights_cmd",
+            topic_actuation_cmd:             topic("control/command/actuation_cmd"),
+            topic_gear_cmd:                  topic("control/command/gear_cmd"),
+            topic_current_gate_mode:         topic("control/current_gate_mode"),
+            topic_turn_indicators_cmd:       topic("control/command/turn_indicators_cmd"),
+            topic_hazard_lights_cmd:         topic("control/command/hazard_lights_cmd"),
             // Sensor publish topic
             list_image_raw: HashMap::new(),
             list_camera_info: HashMap::new(),
@@ -68,36 +75,51 @@ impl Autoware {
     pub fn add_sensors(&mut self, sensor_type: SensorType, sensor_name: String) {
         match sensor_type {
             SensorType::CameraRgb => {
-                let raw_key = format!(
-                    "{}sensing/camera/{sensor_name}/image_raw",
-                    self.prefix.clone()
-                );
-                let info_key = format!(
-                    "{}sensing/camera/{sensor_name}/camera_info",
-                    self.prefix.clone()
-                );
+                let raw_key = if self.mode == Mode::RmwZenoh {
+                    format!("{}*/sensing/camera/{}/image_raw/*/*", self.prefix, sensor_name)
+                } else {
+                    format!("{}sensing/camera/{}/image_raw", self.prefix, sensor_name)
+                };
+                let info_key = if self.mode == Mode::RmwZenoh {
+                    format!("{}*/sensing/camera/{}/camera_info/*/*", self.prefix, sensor_name)
+                } else {
+                    format!("{}sensing/camera/{}/camera_info", self.prefix, sensor_name)
+                };
                 self.list_image_raw.insert(sensor_name.clone(), raw_key);
                 self.list_camera_info.insert(sensor_name, info_key);
             }
             SensorType::Collision => {}
             SensorType::Imu => {
-                let imu_key = format!("{}sensing/imu/{sensor_name}/imu_raw", self.prefix.clone());
+                let imu_key = if self.mode == Mode::RmwZenoh {
+                    format!("{}*/sensing/imu/{}/imu_raw/*/*", self.prefix, sensor_name)
+                } else {
+                    format!("{}sensing/imu/{}/imu_raw", self.prefix, sensor_name)
+                };
                 self.list_imu.insert(sensor_name.clone(), imu_key);
             }
             SensorType::LidarRayCast => {
-                let lidar_key = format!("{}carla_pointcloud", self.prefix.clone());
+                let lidar_key = if self.mode == Mode::RmwZenoh {
+                    format!("{}*/carla_pointcloud/*/*", self.prefix)
+                } else {
+                    format!("{}carla_pointcloud", self.prefix)
+                };
                 self.list_lidar.insert(sensor_name.clone(), lidar_key);
             }
             SensorType::LidarRayCastSemantic => {
-                let lidar_key = format!("{}carla_pointcloud", self.prefix.clone());
+                let lidar_key = if self.mode == Mode::RmwZenoh {
+                    format!("{}*/carla_pointcloud/*/*", self.prefix)
+                } else {
+                    format!("{}carla_pointcloud", self.prefix)
+                };
                 self.list_lidar_semantics
                     .insert(sensor_name.clone(), lidar_key);
             }
             SensorType::Gnss => {
-                let gnss_key = format!(
-                    "{}sensing/gnss/{sensor_name}/nav_sat_fix",
-                    self.prefix.clone()
-                );
+                let gnss_key = if self.mode == Mode::RmwZenoh {
+                    format!("{}*/sensing/gnss/{}/nav_sat_fix/*/*", self.prefix, sensor_name)
+                } else {
+                    format!("{}sensing/gnss/{}/nav_sat_fix", self.prefix, sensor_name)
+                };
                 self.list_gnss.insert(sensor_name.clone(), gnss_key);
             }
             SensorType::NotSupport => {}

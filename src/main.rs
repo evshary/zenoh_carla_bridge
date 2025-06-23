@@ -33,6 +33,8 @@ enum Mode {
     DDS,
     /// Using zenoh-bridge-ros2dds
     ROS2,
+    /// Using rmw_zenoh
+    RmwZenoh,
 }
 
 /// Zenoh Carla bridge for Autoware
@@ -111,7 +113,7 @@ fn main() -> Result<()> {
     let mut bridge_list: HashMap<ActorId, Box<dyn ActorBridge>> = HashMap::new();
 
     // Create clock publisher
-    let simulator_clock = SimulatorClock::new(z_session.clone(), mode == Mode::ROS2)
+    let simulator_clock = SimulatorClock::new(z_session.clone(), mode.clone())
         .expect("Unable to create simulator clock!");
 
     // Create thread for ticking
@@ -145,7 +147,7 @@ fn main() -> Result<()> {
                 let bridge = match bridge::actor_bridge::get_bridge_type(actor.clone()) {
                     Ok(BridgeType::Vehicle(vehicle_name)) => {
                         let aw = autoware_list.entry(vehicle_name.clone()).or_insert(
-                            autoware::Autoware::new(vehicle_name.clone(), mode == Mode::ROS2),
+                            autoware::Autoware::new(vehicle_name.clone(), mode.clone()),
                         );
                         bridge::actor_bridge::create_bridge(
                             z_session.clone(),
@@ -156,7 +158,7 @@ fn main() -> Result<()> {
                     }
                     Ok(BridgeType::Sensor(vehicle_name, sensor_type, sensor_name)) => {
                         let aw = autoware_list.entry(vehicle_name.clone()).or_insert(
-                            autoware::Autoware::new(vehicle_name.clone(), mode == Mode::ROS2),
+                            autoware::Autoware::new(vehicle_name.clone(), mode.clone()),
                         );
                         aw.add_sensors(sensor_type, sensor_name.clone());
                         bridge::actor_bridge::create_bridge(
