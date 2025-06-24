@@ -134,19 +134,54 @@ impl SensorBridge {
 
         match sensor_type {
             SensorType::CameraRgb => {
-                register_camera_rgb(z_session, &actor, key_list, tx.clone(), rx, attachment.clone())?;
+                register_camera_rgb(
+                    z_session,
+                    &actor,
+                    key_list,
+                    tx.clone(),
+                    rx,
+                    attachment.clone(),
+                )?;
             }
             SensorType::LidarRayCast => {
-                register_lidar_raycast(z_session, &actor, key_list, tx.clone(), rx, attachment.clone())?;
+                register_lidar_raycast(
+                    z_session,
+                    &actor,
+                    key_list,
+                    tx.clone(),
+                    rx,
+                    attachment.clone(),
+                )?;
             }
             SensorType::LidarRayCastSemantic => {
-                register_lidar_raycast_semantic(z_session, &actor, key_list, tx.clone(), rx, attachment.clone())?;
+                register_lidar_raycast_semantic(
+                    z_session,
+                    &actor,
+                    key_list,
+                    tx.clone(),
+                    rx,
+                    attachment.clone(),
+                )?;
             }
             SensorType::Imu => {
-                register_imu(z_session, &actor, key_list, tx.clone(), rx, attachment.clone())?;
+                register_imu(
+                    z_session,
+                    &actor,
+                    key_list,
+                    tx.clone(),
+                    rx,
+                    attachment.clone(),
+                )?;
             }
             SensorType::Gnss => {
-                register_gnss(z_session, &actor, key_list, tx.clone(), rx, attachment.clone())?;
+                register_gnss(
+                    z_session,
+                    &actor,
+                    key_list,
+                    tx.clone(),
+                    rx,
+                    attachment.clone(),
+                )?;
             }
             SensorType::Collision => {
                 log::warn!("Collision sensor is not supported yet");
@@ -189,12 +224,20 @@ fn register_camera_rgb(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(e) = image_publisher.put(sensor_data).attachment(attachment.clone()).wait() {
+                if let Err(e) = image_publisher
+                    .put(sensor_data)
+                    .attachment(attachment.clone())
+                    .wait()
+                {
                     log::error!("Failed to publish to {}: {:?}", raw_key, e);
                 }
             }
             Ok((MessageType::InfoData, info_data)) => {
-                if let Err(e) = info_publisher.put(info_data).attachment(attachment.clone()).wait() {
+                if let Err(e) = info_publisher
+                    .put(info_data)
+                    .attachment(attachment.clone())
+                    .wait()
+                {
                     log::error!("Failed to publish to {}: {:?}", info_key, e);
                 }
             }
@@ -265,7 +308,11 @@ fn register_lidar_raycast(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(e) = pcd_publisher.put(sensor_data).attachment(attachment.clone()).wait() {
+                if let Err(e) = pcd_publisher
+                    .put(sensor_data)
+                    .attachment(attachment.clone())
+                    .wait()
+                {
                     log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }
@@ -305,7 +352,11 @@ fn register_lidar_raycast_semantic(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(e) = pcd_publisher.put(sensor_data).attachment(attachment.clone()).wait() {
+                if let Err(e) = pcd_publisher
+                    .put(sensor_data)
+                    .attachment(attachment.clone())
+                    .wait()
+                {
                     log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }
@@ -345,7 +396,11 @@ fn register_imu(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(e) = imu_publisher.put(sensor_data).attachment(attachment.clone()).wait() {
+                if let Err(e) = imu_publisher
+                    .put(sensor_data)
+                    .attachment(attachment.clone())
+                    .wait()
+                {
                     log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }
@@ -384,7 +439,11 @@ fn register_gnss(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(e) = gnss_publisher.put(sensor_data).attachment(attachment.clone()).wait() {
+                if let Err(e) = gnss_publisher
+                    .put(sensor_data)
+                    .attachment(attachment.clone())
+                    .wait()
+                {
                     log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }

@@ -23,7 +23,7 @@ impl<'a> SimulatorClock<'a> {
             Mode::DDS => "*/rt/clock".to_string(),
         };
         let publisher_clock = z_session.declare_publisher(key).wait()?;
-        
+
         // Initialize attachment
         let seq_num: i64 = 1;
         let mut attachment = seq_num.to_le_bytes().to_vec();
@@ -32,8 +32,11 @@ impl<'a> SimulatorClock<'a> {
         attachment.extend_from_slice(&timestamp.to_le_bytes());
         attachment.push(16u8);
         attachment.extend_from_slice(&[0xAB; 16]);
-        
-        Ok(SimulatorClock { publisher_clock, attachment })
+
+        Ok(SimulatorClock {
+            publisher_clock,
+            attachment,
+        })
     }
 
     pub fn publish_clock(&self, timestamp: Option<f64>) -> Result<()> {
@@ -54,7 +57,10 @@ impl<'a> SimulatorClock<'a> {
         };
         let clock_msg = rosgraph_msgs::Clock { clock: time };
         let encoded = cdr::serialize::<_, _, CdrLe>(&clock_msg, Infinite)?;
-        self.publisher_clock.put(encoded).attachment(self.attachment.clone()).wait()?;
+        self.publisher_clock
+            .put(encoded)
+            .attachment(self.attachment.clone())
+            .wait()?;
         Ok(())
     }
 }

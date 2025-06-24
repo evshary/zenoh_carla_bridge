@@ -49,19 +49,19 @@ impl Autoware {
             prefix: prefix.clone(),
             _vehicle_name: vehicle_name,
             // Vehicle publish topic
-            topic_actuation_status:          topic("vehicle/status/actuation_status"),
-            topic_velocity_status:           topic("vehicle/status/velocity_status"),
-            topic_steering_status:           topic("vehicle/status/steering_status"),
-            topic_gear_status:               topic("vehicle/status/gear_status"),
-            topic_control_mode:              topic("vehicle/status/control_mode"),
-            topic_turn_indicators_status:    topic("vehicle/status/turn_indicators_status"),
-            topic_hazard_lights_status:      topic("vehicle/status/hazard_lights_status"),
+            topic_actuation_status: topic("vehicle/status/actuation_status"),
+            topic_velocity_status: topic("vehicle/status/velocity_status"),
+            topic_steering_status: topic("vehicle/status/steering_status"),
+            topic_gear_status: topic("vehicle/status/gear_status"),
+            topic_control_mode: topic("vehicle/status/control_mode"),
+            topic_turn_indicators_status: topic("vehicle/status/turn_indicators_status"),
+            topic_hazard_lights_status: topic("vehicle/status/hazard_lights_status"),
             // Vehicle subscribe topic
-            topic_actuation_cmd:             topic("control/command/actuation_cmd"),
-            topic_gear_cmd:                  topic("control/command/gear_cmd"),
-            topic_current_gate_mode:         topic("control/current_gate_mode"),
-            topic_turn_indicators_cmd:       topic("control/command/turn_indicators_cmd"),
-            topic_hazard_lights_cmd:         topic("control/command/hazard_lights_cmd"),
+            topic_actuation_cmd: topic("control/command/actuation_cmd"),
+            topic_gear_cmd: topic("control/command/gear_cmd"),
+            topic_current_gate_mode: topic("control/current_gate_mode"),
+            topic_turn_indicators_cmd: topic("control/command/turn_indicators_cmd"),
+            topic_hazard_lights_cmd: topic("control/command/hazard_lights_cmd"),
             // Sensor publish topic
             list_image_raw: HashMap::new(),
             list_camera_info: HashMap::new(),
@@ -76,12 +76,18 @@ impl Autoware {
         match sensor_type {
             SensorType::CameraRgb => {
                 let raw_key = if self.mode == Mode::RmwZenoh {
-                    format!("{}*/sensing/camera/{}/image_raw/*/*", self.prefix, sensor_name)
+                    format!(
+                        "{}*/sensing/camera/{}/image_raw/*/*",
+                        self.prefix, sensor_name
+                    )
                 } else {
                     format!("{}sensing/camera/{}/image_raw", self.prefix, sensor_name)
                 };
                 let info_key = if self.mode == Mode::RmwZenoh {
-                    format!("{}*/sensing/camera/{}/camera_info/*/*", self.prefix, sensor_name)
+                    format!(
+                        "{}*/sensing/camera/{}/camera_info/*/*",
+                        self.prefix, sensor_name
+                    )
                 } else {
                     format!("{}sensing/camera/{}/camera_info", self.prefix, sensor_name)
                 };
@@ -116,7 +122,10 @@ impl Autoware {
             }
             SensorType::Gnss => {
                 let gnss_key = if self.mode == Mode::RmwZenoh {
-                    format!("{}*/sensing/gnss/{}/nav_sat_fix/*/*", self.prefix, sensor_name)
+                    format!(
+                        "{}*/sensing/gnss/{}/nav_sat_fix/*/*",
+                        self.prefix, sensor_name
+                    )
                 } else {
                     format!("{}sensing/gnss/{}/nav_sat_fix", self.prefix, sensor_name)
                 };

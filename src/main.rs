@@ -146,9 +146,9 @@ fn main() -> Result<()> {
                 let actor = actor_list.remove(&id).expect("ID should be in the list!");
                 let bridge = match bridge::actor_bridge::get_bridge_type(actor.clone()) {
                     Ok(BridgeType::Vehicle(vehicle_name)) => {
-                        let aw = autoware_list.entry(vehicle_name.clone()).or_insert(
-                            autoware::Autoware::new(vehicle_name.clone(), mode.clone()),
-                        );
+                        let aw = autoware_list
+                            .entry(vehicle_name.clone())
+                            .or_insert(autoware::Autoware::new(vehicle_name.clone(), mode.clone()));
                         bridge::actor_bridge::create_bridge(
                             z_session.clone(),
                             actor,
@@ -157,9 +157,9 @@ fn main() -> Result<()> {
                         )?
                     }
                     Ok(BridgeType::Sensor(vehicle_name, sensor_type, sensor_name)) => {
-                        let aw = autoware_list.entry(vehicle_name.clone()).or_insert(
-                            autoware::Autoware::new(vehicle_name.clone(), mode.clone()),
-                        );
+                        let aw = autoware_list
+                            .entry(vehicle_name.clone())
+                            .or_insert(autoware::Autoware::new(vehicle_name.clone(), mode.clone()));
                         aw.add_sensors(sensor_type, sensor_name.clone());
                         bridge::actor_bridge::create_bridge(
                             z_session.clone(),
