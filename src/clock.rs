@@ -7,8 +7,7 @@ use cdr::{CdrLe, Infinite};
 use zenoh::{pubsub::Publisher, Session, Wait};
 use zenoh_ros_type::{builtin_interfaces, rosgraph_msgs};
 
-use crate::error::Result;
-use crate::Mode;
+use crate::{error::Result, Mode};
 
 pub struct SimulatorClock<'a> {
     publisher_clock: Publisher<'a>,

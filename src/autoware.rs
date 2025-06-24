@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use crate::bridge::sensor_bridge::SensorType;
-use crate::Mode;
+use crate::{bridge::sensor_bridge::SensorType, Mode};
 
 #[derive(Clone)]
 pub struct Autoware {

@@ -1,5 +1,7 @@
-use std::sync::{atomic::Ordering, Arc};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    sync::{atomic::Ordering, Arc},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
