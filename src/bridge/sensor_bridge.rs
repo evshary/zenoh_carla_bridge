@@ -7,7 +7,6 @@ use std::{
         Arc,
     },
     thread,
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 use carla::{
@@ -33,6 +32,21 @@ use crate::{
     types::{GnssService, GnssStatus, PointFieldType},
     utils,
 };
+
+// This macro will publish a message with or without an attachment depending on the mode.
+// If the mode is RmwZenoh, it will add the attachment; otherwise, it will not.
+macro_rules! put_with_attachment {
+    ($publisher:expr, $payload:expr, $attachment:expr, $mode:expr) => {
+        if $mode == crate::Mode::RmwZenoh {
+            $publisher
+                .put($payload)
+                .attachment($attachment.clone())
+                .wait()
+        } else {
+            $publisher.put($payload).wait()
+        }
+    };
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SensorType {
@@ -123,12 +137,11 @@ impl SensorBridge {
         let (tx, rx) = mpsc::channel();
         let key_list = autoware.get_sensors_key(sensor_type, &sensor_name);
 
-        // Initialize attachment
+        // The attachment format is required for interoperability with rmw_zenoh; see:
+        // https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#publishers
         let seq_num: i64 = 1;
         let mut attachment = seq_num.to_le_bytes().to_vec();
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-        let timestamp: i64 = now.as_nanos() as i64;
-        attachment.extend_from_slice(&timestamp.to_le_bytes());
+        attachment.extend_from_slice(&0i64.to_le_bytes());
         attachment.push(16u8);
         attachment.extend_from_slice(&[0xAB; 16]);
 
@@ -141,6 +154,7 @@ impl SensorBridge {
                     tx.clone(),
                     rx,
                     attachment.clone(),
+                    autoware.mode.clone(),
                 )?;
             }
             SensorType::LidarRayCast => {
@@ -151,6 +165,7 @@ impl SensorBridge {
                     tx.clone(),
                     rx,
                     attachment.clone(),
+                    autoware.mode.clone(),
                 )?;
             }
             SensorType::LidarRayCastSemantic => {
@@ -161,6 +176,7 @@ impl SensorBridge {
                     tx.clone(),
                     rx,
                     attachment.clone(),
+                    autoware.mode.clone(),
                 )?;
             }
             SensorType::Imu => {
@@ -171,6 +187,7 @@ impl SensorBridge {
                     tx.clone(),
                     rx,
                     attachment.clone(),
+                    autoware.mode.clone(),
                 )?;
             }
             SensorType::Gnss => {
@@ -181,6 +198,7 @@ impl SensorBridge {
                     tx.clone(),
                     rx,
                     attachment.clone(),
+                    autoware.mode.clone(),
                 )?;
             }
             SensorType::Collision => {
@@ -214,6 +232,7 @@ fn register_camera_rgb(
     tx: Sender<(MessageType, Vec<u8>)>,
     rx: Receiver<(MessageType, Vec<u8>)>,
     attachment: Vec<u8>,
+    mode: crate::Mode,
 ) -> Result<()> {
     let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
     let raw_key = key_list[0].clone();
@@ -224,20 +243,13 @@ fn register_camera_rgb(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(e) = image_publisher
-                    .put(sensor_data)
-                    .attachment(attachment.clone())
-                    .wait()
+                if let Err(e) = put_with_attachment!(image_publisher, sensor_data, attachment, mode)
                 {
                     log::error!("Failed to publish to {}: {:?}", raw_key, e);
                 }
             }
             Ok((MessageType::InfoData, info_data)) => {
-                if let Err(e) = info_publisher
-                    .put(info_data)
-                    .attachment(attachment.clone())
-                    .wait()
-                {
+                if let Err(e) = put_with_attachment!(info_publisher, info_data, attachment, mode) {
                     log::error!("Failed to publish to {}: {:?}", info_key, e);
                 }
             }
@@ -301,6 +313,7 @@ fn register_lidar_raycast(
     tx: Sender<(MessageType, Vec<u8>)>,
     rx: Receiver<(MessageType, Vec<u8>)>,
     attachment: Vec<u8>,
+    mode: crate::Mode,
 ) -> Result<()> {
     let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
     let key = key_list[0].clone();
@@ -308,11 +321,7 @@ fn register_lidar_raycast(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(e) = pcd_publisher
-                    .put(sensor_data)
-                    .attachment(attachment.clone())
-                    .wait()
-                {
+                if let Err(e) = put_with_attachment!(pcd_publisher, sensor_data, attachment, mode) {
                     log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }
@@ -345,6 +354,7 @@ fn register_lidar_raycast_semantic(
     tx: Sender<(MessageType, Vec<u8>)>,
     rx: Receiver<(MessageType, Vec<u8>)>,
     attachment: Vec<u8>,
+    mode: crate::Mode,
 ) -> Result<()> {
     let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
     let key = key_list[0].clone();
@@ -352,11 +362,7 @@ fn register_lidar_raycast_semantic(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(e) = pcd_publisher
-                    .put(sensor_data)
-                    .attachment(attachment.clone())
-                    .wait()
-                {
+                if let Err(e) = put_with_attachment!(pcd_publisher, sensor_data, attachment, mode) {
                     log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }
@@ -389,6 +395,7 @@ fn register_imu(
     tx: Sender<(MessageType, Vec<u8>)>,
     rx: Receiver<(MessageType, Vec<u8>)>,
     attachment: Vec<u8>,
+    mode: crate::Mode,
 ) -> Result<()> {
     let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
     let key = key_list[0].clone();
@@ -396,11 +403,7 @@ fn register_imu(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(e) = imu_publisher
-                    .put(sensor_data)
-                    .attachment(attachment.clone())
-                    .wait()
-                {
+                if let Err(e) = put_with_attachment!(imu_publisher, sensor_data, attachment, mode) {
                     log::error!("Failed to publish to {}: {:?}", key, e);
                 }
             }
@@ -432,6 +435,7 @@ fn register_gnss(
     tx: Sender<(MessageType, Vec<u8>)>,
     rx: Receiver<(MessageType, Vec<u8>)>,
     attachment: Vec<u8>,
+    mode: crate::Mode,
 ) -> Result<()> {
     let key_list = key_list.ok_or(BridgeError::CarlaIssue("No sesnsor exists"))?;
     let key = key_list[0].clone();
@@ -439,10 +443,7 @@ fn register_gnss(
     thread::spawn(move || loop {
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
-                if let Err(e) = gnss_publisher
-                    .put(sensor_data)
-                    .attachment(attachment.clone())
-                    .wait()
+                if let Err(e) = put_with_attachment!(gnss_publisher, sensor_data, attachment, mode)
                 {
                     log::error!("Failed to publish to {}: {:?}", key, e);
                 }

@@ -31,18 +31,23 @@ pub struct Autoware {
 }
 
 impl Autoware {
+    // This function will format the topic depending on the mode.
+    // If the mode is RmwZenoh, it will use the Zenoh key expression format; otherwise, it will use the standard ROS 2 format.
+    // See: https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#topic-and-service-name-mapping-to-zenoh-key-expressions
+    pub fn topic_fmt(prefix: &str, mode: &Mode, base: &str) -> String {
+        if *mode == Mode::RmwZenoh {
+            format!("{prefix}*/{base}/*/*", prefix = prefix, base = base)
+        } else {
+            format!("{prefix}{base}", prefix = prefix, base = base)
+        }
+    }
+
     pub fn new(vehicle_name: String, mode: Mode) -> Autoware {
         let prefix = match mode {
             Mode::ROS2 | Mode::RmwZenoh => format!("{}/", vehicle_name),
             Mode::DDS => format!("{}/rt/", vehicle_name),
         };
-        let topic = |base: &str| {
-            if mode == Mode::RmwZenoh {
-                format!("{prefix}*/{base}/*/*")
-            } else {
-                format!("{prefix}{base}")
-            }
-        };
+        let topic = |base: &str| Autoware::topic_fmt(&prefix, &mode, base);
         Autoware {
             mode: mode.clone(),
             prefix: prefix.clone(),
@@ -74,60 +79,43 @@ impl Autoware {
     pub fn add_sensors(&mut self, sensor_type: SensorType, sensor_name: String) {
         match sensor_type {
             SensorType::CameraRgb => {
-                let raw_key = if self.mode == Mode::RmwZenoh {
-                    format!(
-                        "{}*/sensing/camera/{}/image_raw/*/*",
-                        self.prefix, sensor_name
-                    )
-                } else {
-                    format!("{}sensing/camera/{}/image_raw", self.prefix, sensor_name)
-                };
-                let info_key = if self.mode == Mode::RmwZenoh {
-                    format!(
-                        "{}*/sensing/camera/{}/camera_info/*/*",
-                        self.prefix, sensor_name
-                    )
-                } else {
-                    format!("{}sensing/camera/{}/camera_info", self.prefix, sensor_name)
-                };
+                let raw_key = Autoware::topic_fmt(
+                    &self.prefix,
+                    &self.mode,
+                    &format!("sensing/camera/{}/image_raw", sensor_name),
+                );
+                let info_key = Autoware::topic_fmt(
+                    &self.prefix,
+                    &self.mode,
+                    &format!("sensing/camera/{}/camera_info", sensor_name),
+                );
                 self.list_image_raw.insert(sensor_name.clone(), raw_key);
                 self.list_camera_info.insert(sensor_name, info_key);
             }
             SensorType::Collision => {}
             SensorType::Imu => {
-                let imu_key = if self.mode == Mode::RmwZenoh {
-                    format!("{}*/sensing/imu/{}/imu_raw/*/*", self.prefix, sensor_name)
-                } else {
-                    format!("{}sensing/imu/{}/imu_raw", self.prefix, sensor_name)
-                };
+                let imu_key = Autoware::topic_fmt(
+                    &self.prefix,
+                    &self.mode,
+                    &format!("sensing/imu/{}/imu_raw", sensor_name),
+                );
                 self.list_imu.insert(sensor_name.clone(), imu_key);
             }
             SensorType::LidarRayCast => {
-                let lidar_key = if self.mode == Mode::RmwZenoh {
-                    format!("{}*/carla_pointcloud/*/*", self.prefix)
-                } else {
-                    format!("{}carla_pointcloud", self.prefix)
-                };
+                let lidar_key = Autoware::topic_fmt(&self.prefix, &self.mode, "carla_pointcloud");
                 self.list_lidar.insert(sensor_name.clone(), lidar_key);
             }
             SensorType::LidarRayCastSemantic => {
-                let lidar_key = if self.mode == Mode::RmwZenoh {
-                    format!("{}*/carla_pointcloud/*/*", self.prefix)
-                } else {
-                    format!("{}carla_pointcloud", self.prefix)
-                };
+                let lidar_key = Autoware::topic_fmt(&self.prefix, &self.mode, "carla_pointcloud");
                 self.list_lidar_semantics
                     .insert(sensor_name.clone(), lidar_key);
             }
             SensorType::Gnss => {
-                let gnss_key = if self.mode == Mode::RmwZenoh {
-                    format!(
-                        "{}*/sensing/gnss/{}/nav_sat_fix/*/*",
-                        self.prefix, sensor_name
-                    )
-                } else {
-                    format!("{}sensing/gnss/{}/nav_sat_fix", self.prefix, sensor_name)
-                };
+                let gnss_key = Autoware::topic_fmt(
+                    &self.prefix,
+                    &self.mode,
+                    &format!("sensing/gnss/{}/nav_sat_fix", sensor_name),
+                );
                 self.list_gnss.insert(sensor_name.clone(), gnss_key);
             }
             SensorType::NotSupport => {}
