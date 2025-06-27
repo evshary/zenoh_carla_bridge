@@ -30,7 +30,7 @@ use super::actor_bridge::{ActorBridge, BridgeType};
 use crate::{
     autoware::Autoware,
     error::{BridgeError, Result},
-    utils,
+    put_with_attachment, utils,
 };
 
 pub struct VehicleBridge<'a> {
@@ -50,6 +50,8 @@ pub struct VehicleBridge<'a> {
     current_actuation_cmd: Arc<ArcSwap<ActuationCommandStamped>>,
     current_gear: Arc<ArcSwap<u8>>,
     current_gate_mode: Arc<ArcSwap<GateMode>>,
+    attachment: Vec<u8>,
+    mode: crate::Mode,
 }
 
 impl<'a> VehicleBridge<'a> {
@@ -179,6 +181,9 @@ impl<'a> VehicleBridge<'a> {
             })
             .wait()?;
 
+        // Generate rmw_zenoh-compatible attachment
+        let attachment = utils::generate_attachment();
+
         Ok(VehicleBridge {
             vehicle_name,
             actor,
@@ -196,6 +201,8 @@ impl<'a> VehicleBridge<'a> {
             current_actuation_cmd,
             current_gear,
             current_gate_mode,
+            attachment,
+            mode: autoware.mode.clone(),
         })
     }
 
@@ -218,7 +225,12 @@ impl<'a> VehicleBridge<'a> {
             -control.steer
         );
         let encoded = cdr::serialize::<_, _, CdrLe>(&actuation_msg, Infinite)?;
-        self.publisher_actuation.put(encoded).wait()?;
+        put_with_attachment!(
+            self.publisher_actuation,
+            encoded,
+            self.attachment,
+            self.mode
+        )?;
         Ok(())
     }
 
@@ -238,18 +250,17 @@ impl<'a> VehicleBridge<'a> {
                 velocity.norm()
             },
             lateral_velocity: 0.0,
-            heading_rate: self
+            heading_rate: -self
                 .actor
                 .wheel_steer_angle(VehicleWheelLocation::FL_Wheel)
-                .to_radians()
-                * -1.0,
+                .to_radians(),
         };
         log::debug!(
             "Carla => Autoware: current velocity: {}",
             velocity_msg.longitudinal_velocity
         );
         let encoded = cdr::serialize::<_, _, CdrLe>(&velocity_msg, Infinite)?;
-        self.publisher_velocity.put(encoded).wait()?;
+        put_with_attachment!(self.publisher_velocity, encoded, self.attachment, self.mode)?;
         self.velocity
             .store(velocity_msg.longitudinal_velocity, Ordering::Relaxed);
 
@@ -262,14 +273,13 @@ impl<'a> VehicleBridge<'a> {
                 sec: timestamp.floor() as i32,
                 nanosec: (timestamp.fract() * 1_000_000_000_f64) as u32,
             },
-            steering_tire_angle: self
+            steering_tire_angle: -self
                 .actor
                 .wheel_steer_angle(VehicleWheelLocation::FL_Wheel)
-                .to_radians()
-                * -1.0,
+                .to_radians(),
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&steer_msg, Infinite)?;
-        self.publisher_steer.put(encoded).wait()?;
+        put_with_attachment!(self.publisher_steer, encoded, self.attachment, self.mode)?;
         Ok(())
     }
 
@@ -282,7 +292,7 @@ impl<'a> VehicleBridge<'a> {
             report: **self.current_gear.load(),
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&gear_msg, Infinite)?;
-        self.publisher_gear.put(encoded).wait()?;
+        put_with_attachment!(self.publisher_gear, encoded, self.attachment, self.mode)?;
         Ok(())
     }
 
@@ -300,7 +310,7 @@ impl<'a> VehicleBridge<'a> {
             mode,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&control_msg, Infinite)?;
-        self.publisher_control.put(encoded).wait()?;
+        put_with_attachment!(self.publisher_control, encoded, self.attachment, self.mode)?;
         Ok(())
     }
 
@@ -314,7 +324,12 @@ impl<'a> VehicleBridge<'a> {
             report: turn_indicators_report::DISABLE,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&turnindicator_msg, Infinite)?;
-        self.publisher_turnindicator.put(encoded).wait()?;
+        put_with_attachment!(
+            self.publisher_turnindicator,
+            encoded,
+            self.attachment,
+            self.mode
+        )?;
         Ok(())
     }
 
@@ -328,7 +343,12 @@ impl<'a> VehicleBridge<'a> {
             report: hazard_lights_report::DISABLE,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&hazardlight_msg, Infinite)?;
-        self.publisher_hazardlight.put(encoded).wait()?;
+        put_with_attachment!(
+            self.publisher_hazardlight,
+            encoded,
+            self.attachment,
+            self.mode
+        )?;
         Ok(())
     }
 
