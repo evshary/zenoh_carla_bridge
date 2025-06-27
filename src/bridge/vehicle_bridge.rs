@@ -30,7 +30,7 @@ use super::actor_bridge::{ActorBridge, BridgeType};
 use crate::{
     autoware::Autoware,
     error::{BridgeError, Result},
-    utils,
+    put_with_attachment, utils,
 };
 
 pub struct VehicleBridge<'a> {
@@ -52,21 +52,6 @@ pub struct VehicleBridge<'a> {
     current_gate_mode: Arc<ArcSwap<GateMode>>,
     attachment: Vec<u8>,
     mode: crate::Mode,
-}
-
-// This macro will publish a message with or without an attachment depending on the mode.
-// If the mode is RmwZenoh, it will add the attachment; otherwise, it will not.
-macro_rules! put_with_attachment {
-    ($publisher:expr, $payload:expr, $attachment:expr, $mode:expr) => {
-        if $mode == crate::Mode::RmwZenoh {
-            $publisher
-                .put($payload)
-                .attachment($attachment.clone())
-                .wait()?
-        } else {
-            $publisher.put($payload).wait()?
-        }
-    };
 }
 
 impl<'a> VehicleBridge<'a> {
@@ -196,13 +181,8 @@ impl<'a> VehicleBridge<'a> {
             })
             .wait()?;
 
-        // The attachment format is required for interoperability with rmw_zenoh; see:
-        // https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#publishers
-        let seq_num: i64 = 1;
-        let mut attachment = seq_num.to_le_bytes().to_vec();
-        attachment.extend_from_slice(&0i64.to_le_bytes());
-        attachment.push(16u8);
-        attachment.extend_from_slice(&[0xAB; 16]);
+        // Generate rmw_zenoh-compatible attachment
+        let attachment = utils::generate_attachment();
 
         Ok(VehicleBridge {
             vehicle_name,
@@ -250,7 +230,7 @@ impl<'a> VehicleBridge<'a> {
             encoded,
             self.attachment,
             self.mode
-        );
+        )?;
         Ok(())
     }
 
@@ -281,7 +261,7 @@ impl<'a> VehicleBridge<'a> {
             velocity_msg.longitudinal_velocity
         );
         let encoded = cdr::serialize::<_, _, CdrLe>(&velocity_msg, Infinite)?;
-        put_with_attachment!(self.publisher_velocity, encoded, self.attachment, self.mode);
+        put_with_attachment!(self.publisher_velocity, encoded, self.attachment, self.mode)?;
         self.velocity
             .store(velocity_msg.longitudinal_velocity, Ordering::Relaxed);
 
@@ -301,7 +281,7 @@ impl<'a> VehicleBridge<'a> {
                 * -1.0,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&steer_msg, Infinite)?;
-        put_with_attachment!(self.publisher_steer, encoded, self.attachment, self.mode);
+        put_with_attachment!(self.publisher_steer, encoded, self.attachment, self.mode)?;
         Ok(())
     }
 
@@ -314,7 +294,7 @@ impl<'a> VehicleBridge<'a> {
             report: **self.current_gear.load(),
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&gear_msg, Infinite)?;
-        put_with_attachment!(self.publisher_gear, encoded, self.attachment, self.mode);
+        put_with_attachment!(self.publisher_gear, encoded, self.attachment, self.mode)?;
         Ok(())
     }
 
@@ -332,7 +312,7 @@ impl<'a> VehicleBridge<'a> {
             mode,
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&control_msg, Infinite)?;
-        put_with_attachment!(self.publisher_control, encoded, self.attachment, self.mode);
+        put_with_attachment!(self.publisher_control, encoded, self.attachment, self.mode)?;
         Ok(())
     }
 
@@ -351,7 +331,7 @@ impl<'a> VehicleBridge<'a> {
             encoded,
             self.attachment,
             self.mode
-        );
+        )?;
         Ok(())
     }
 
@@ -370,7 +350,7 @@ impl<'a> VehicleBridge<'a> {
             encoded,
             self.attachment,
             self.mode
-        );
+        )?;
         Ok(())
     }
 

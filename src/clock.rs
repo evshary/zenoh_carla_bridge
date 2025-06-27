@@ -7,7 +7,7 @@ use cdr::{CdrLe, Infinite};
 use zenoh::{pubsub::Publisher, Session, Wait};
 use zenoh_ros_type::{builtin_interfaces, rosgraph_msgs};
 
-use crate::{error::Result, Mode};
+use crate::{error::Result, put_with_attachment, utils, Mode};
 
 pub struct SimulatorClock<'a> {
     publisher_clock: Publisher<'a>,
@@ -26,13 +26,8 @@ impl<'a> SimulatorClock<'a> {
         };
         let publisher_clock = z_session.declare_publisher(key).wait()?;
 
-        // The attachment format is required for interoperability with rmw_zenoh; see:
-        // https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#publishers
-        let seq_num: i64 = 1;
-        let mut attachment = seq_num.to_le_bytes().to_vec();
-        attachment.extend_from_slice(&0i64.to_le_bytes());
-        attachment.push(16u8);
-        attachment.extend_from_slice(&[0xAB; 16]);
+        // Generate rmw_zenoh-compatible attachment
+        let attachment = utils::generate_attachment();
 
         Ok(SimulatorClock {
             publisher_clock,
@@ -60,15 +55,7 @@ impl<'a> SimulatorClock<'a> {
         let clock_msg = rosgraph_msgs::Clock { clock: time };
         let encoded = cdr::serialize::<_, _, CdrLe>(&clock_msg, Infinite)?;
 
-        // If the mode is RmwZenoh, it will add the attachment; otherwise, it will not.
-        if self.mode == Mode::RmwZenoh {
-            self.publisher_clock
-                .put(encoded)
-                .attachment(self.attachment.clone())
-                .wait()?;
-        } else {
-            self.publisher_clock.put(encoded).wait()?;
-        }
+        put_with_attachment!(self.publisher_clock, encoded, self.attachment, self.mode)?;
         Ok(())
     }
 }

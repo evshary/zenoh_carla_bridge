@@ -29,24 +29,10 @@ use super::actor_bridge::{ActorBridge, BridgeType};
 use crate::{
     autoware::Autoware,
     error::{BridgeError, Result},
+    put_with_attachment,
     types::{GnssService, GnssStatus, PointFieldType},
     utils,
 };
-
-// This macro will publish a message with or without an attachment depending on the mode.
-// If the mode is RmwZenoh, it will add the attachment; otherwise, it will not.
-macro_rules! put_with_attachment {
-    ($publisher:expr, $payload:expr, $attachment:expr, $mode:expr) => {
-        if $mode == crate::Mode::RmwZenoh {
-            $publisher
-                .put($payload)
-                .attachment($attachment.clone())
-                .wait()
-        } else {
-            $publisher.put($payload).wait()
-        }
-    };
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SensorType {
@@ -137,13 +123,8 @@ impl SensorBridge {
         let (tx, rx) = mpsc::channel();
         let key_list = autoware.get_sensors_key(sensor_type, &sensor_name);
 
-        // The attachment format is required for interoperability with rmw_zenoh; see:
-        // https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#publishers
-        let seq_num: i64 = 1;
-        let mut attachment = seq_num.to_le_bytes().to_vec();
-        attachment.extend_from_slice(&0i64.to_le_bytes());
-        attachment.push(16u8);
-        attachment.extend_from_slice(&[0xAB; 16]);
+        // Generate rmw_zenoh-compatible attachment
+        let attachment = utils::generate_attachment();
 
         match sensor_type {
             SensorType::CameraRgb => {
