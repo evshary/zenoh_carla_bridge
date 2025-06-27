@@ -8,9 +8,9 @@ use crate::{bridge::sensor_bridge::SensorType, Mode};
 #[inline]
 fn topic_fmt(prefix: &str, mode: &Mode, base: &str) -> String {
     if *mode == Mode::RmwZenoh {
-        format!("{prefix}*/{base}/*/*", prefix = prefix, base = base)
+        format!("{prefix}*/{base}/*/*")
     } else {
-        format!("{prefix}{base}", prefix = prefix, base = base)
+        format!("{prefix}{base}")
     }
 }
 
@@ -45,8 +45,8 @@ pub struct Autoware {
 impl Autoware {
     pub fn new(vehicle_name: String, mode: Mode) -> Autoware {
         let prefix = match mode {
-            Mode::ROS2 | Mode::RmwZenoh => format!("{}/", vehicle_name),
-            Mode::DDS => format!("{}/rt/", vehicle_name),
+            Mode::ROS2 | Mode::RmwZenoh => format!("{vehicle_name}/"),
+            Mode::DDS => format!("{vehicle_name}/rt/"),
         };
         let topic = |base: &str| topic_fmt(&prefix, &mode, base);
         Autoware {
@@ -83,12 +83,12 @@ impl Autoware {
                 let raw_key = topic_fmt(
                     &self.prefix,
                     &self.mode,
-                    &format!("sensing/camera/{}/image_raw", sensor_name),
+                    &format!("sensing/camera/{sensor_name}/image_raw"),
                 );
                 let info_key = topic_fmt(
                     &self.prefix,
                     &self.mode,
-                    &format!("sensing/camera/{}/camera_info", sensor_name),
+                    &format!("sensing/camera/{sensor_name}/camera_info"),
                 );
                 self.list_image_raw.insert(sensor_name.clone(), raw_key);
                 self.list_camera_info.insert(sensor_name, info_key);
@@ -98,7 +98,7 @@ impl Autoware {
                 let imu_key = topic_fmt(
                     &self.prefix,
                     &self.mode,
-                    &format!("sensing/imu/{}/imu_raw", sensor_name),
+                    &format!("sensing/imu/{sensor_name}/imu_raw"),
                 );
                 self.list_imu.insert(sensor_name.clone(), imu_key);
             }
@@ -115,7 +115,7 @@ impl Autoware {
                 let gnss_key = topic_fmt(
                     &self.prefix,
                     &self.mode,
-                    &format!("sensing/gnss/{}/nav_sat_fix", sensor_name),
+                    &format!("sensing/gnss/{sensor_name}/nav_sat_fix"),
                 );
                 self.list_gnss.insert(sensor_name.clone(), gnss_key);
             }

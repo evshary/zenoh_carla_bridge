@@ -44,7 +44,7 @@ pub fn generate_attachment() -> Vec<u8> {
 #[macro_export]
 macro_rules! put_with_attachment {
     ($publisher:expr, $payload:expr, $attachment:expr, $mode:expr) => {
-        if $mode == crate::Mode::RmwZenoh {
+        if $mode == $crate::Mode::RmwZenoh {
             $publisher
                 .put($payload)
                 .attachment($attachment.clone())

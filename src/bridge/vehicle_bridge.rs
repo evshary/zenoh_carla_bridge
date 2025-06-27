@@ -250,11 +250,10 @@ impl<'a> VehicleBridge<'a> {
                 velocity.norm()
             },
             lateral_velocity: 0.0,
-            heading_rate: self
+            heading_rate: -self
                 .actor
                 .wheel_steer_angle(VehicleWheelLocation::FL_Wheel)
-                .to_radians()
-                * -1.0,
+                .to_radians(),
         };
         log::debug!(
             "Carla => Autoware: current velocity: {}",
@@ -274,11 +273,10 @@ impl<'a> VehicleBridge<'a> {
                 sec: timestamp.floor() as i32,
                 nanosec: (timestamp.fract() * 1_000_000_000_f64) as u32,
             },
-            steering_tire_angle: self
+            steering_tire_angle: -self
                 .actor
                 .wheel_steer_angle(VehicleWheelLocation::FL_Wheel)
-                .to_radians()
-                * -1.0,
+                .to_radians(),
         };
         let encoded = cdr::serialize::<_, _, CdrLe>(&steer_msg, Infinite)?;
         put_with_attachment!(self.publisher_steer, encoded, self.attachment, self.mode)?;
