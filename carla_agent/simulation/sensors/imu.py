@@ -30,7 +30,7 @@ class IMUSensor(object):
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data))
+        # self.sensor.listen(lambda sensor_data: IMUSensor._IMU_callback(weak_self, sensor_data))
 
     @staticmethod
     def _IMU_callback(weak_self, sensor_data):

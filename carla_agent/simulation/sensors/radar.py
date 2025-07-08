@@ -29,7 +29,7 @@ class RadarSensor(object):
 
         # We need a weak reference to self to avoid circular reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda radar_data: RadarSensor._Radar_callback(weak_self, radar_data))
+        # self.sensor.listen(lambda radar_data: RadarSensor._Radar_callback(weak_self, radar_data))
 
     @staticmethod
     def _Radar_callback(weak_self, radar_data):

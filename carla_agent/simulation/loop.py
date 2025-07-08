@@ -66,6 +66,9 @@ def game_loop(args, doc):
                 world.tick(clock)
                 world.render(display)
                 pygame.display.flip()
+            if not args.sync and not args.pygame:
+                # Sleep to avoid high CPU usage.
+                time.sleep(600)
 
     finally:
         if original_settings:
