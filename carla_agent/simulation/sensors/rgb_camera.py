@@ -37,7 +37,7 @@ class RgbCamera(object):
 
         # We need a weak reference to self to avoid circular reference.
         weak_self = weakref.ref(self)
-        sensor.listen(lambda image: RgbCamera._private_callback(weak_self, image))
+        # sensor.listen(lambda image: RgbCamera._private_callback(weak_self, image))
 
         self.sensor = sensor
         self._parent = actor

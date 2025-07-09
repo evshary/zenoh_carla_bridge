@@ -26,7 +26,7 @@ class CollisionSensor(object):
         # We need to pass the lambda a weak reference to self to avoid circular
         # reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event))
+        # self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event))
 
     def get_collision_history(self):
         history = collections.defaultdict(int)
