@@ -103,11 +103,19 @@ impl Autoware {
                 self.list_imu.insert(sensor_name.clone(), imu_key);
             }
             SensorType::LidarRayCast => {
-                let lidar_key = topic_fmt(&self.prefix, &self.mode, "carla_pointcloud");
+                let lidar_key = topic_fmt(
+                    &self.prefix,
+                    &self.mode,
+                    &format!("sensing/lidar/{sensor_name}/pointcloud")
+                );
                 self.list_lidar.insert(sensor_name.clone(), lidar_key);
             }
             SensorType::LidarRayCastSemantic => {
-                let lidar_key = topic_fmt(&self.prefix, &self.mode, "carla_pointcloud");
+                let lidar_key = topic_fmt(
+                    &self.prefix,
+                    &self.mode,
+                    &format!("sensing/lidar/{sensor_name}/pointcloud")
+                );
                 self.list_lidar_semantics
                     .insert(sensor_name.clone(), lidar_key);
             }

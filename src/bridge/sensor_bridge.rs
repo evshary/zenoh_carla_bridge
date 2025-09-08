@@ -315,7 +315,7 @@ fn register_lidar_raycast(
     });
     actor.listen(move |data| {
         let mut header = utils::create_ros_header(Some(data.timestamp()));
-        header.frame_id = String::from("velodyne_top");
+        header.frame_id = String::from("base_link");
         if let Ok(data) = data.try_into() {
             if let Err(e) = lidar_callback(header, data, &tx) {
                 log::error!("Failed to call lidar_callback: {:?}", e);
@@ -356,7 +356,7 @@ fn register_lidar_raycast_semantic(
     });
     actor.listen(move |data| {
         let mut header = utils::create_ros_header(Some(data.timestamp()));
-        header.frame_id = String::from("velodyne_top");
+        header.frame_id = String::from("base_link");
         if let Ok(data) = data.try_into() {
             if let Err(e) = sematic_lidar_callback(header, data, &tx) {
                 log::error!("Failed to call sematic_lidar_callback: {:?}", e);

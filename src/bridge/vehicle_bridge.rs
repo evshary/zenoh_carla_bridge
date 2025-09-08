@@ -52,6 +52,9 @@ pub struct VehicleBridge<'a> {
     current_gate_mode: Arc<ArcSwap<GateMode>>,
     attachment: Vec<u8>,
     mode: crate::Mode,
+    tau: f32,
+    prev_timestamp: Option<f64>,
+    prev_steer_output: f32,
 }
 
 impl<'a> VehicleBridge<'a> {
@@ -203,6 +206,9 @@ impl<'a> VehicleBridge<'a> {
             current_gate_mode,
             attachment,
             mode: autoware.mode.clone(),
+            tau: 0.2,
+            prev_timestamp: None,
+            prev_steer_output: 0.0,
         })
     }
 
@@ -352,7 +358,22 @@ impl<'a> VehicleBridge<'a> {
         Ok(())
     }
 
-    fn update_carla_control(&mut self) {
+    fn first_order_steering(&mut self, steer_input: f32, now_ts: f64) -> f32 {
+        let mut out = self.prev_steer_output;
+        if let Some(prev) = self.prev_timestamp {
+            let dt = (now_ts - prev).max(0.0) as f32;
+            if dt > 0.0 {
+                out = self.prev_steer_output + (steer_input - self.prev_steer_output) * (dt / (self.tau + dt));
+            }
+        } else {
+            out = steer_input;
+        }
+        self.prev_steer_output = out;
+        self.prev_timestamp = Some(now_ts);
+        out
+    }
+
+    fn update_carla_control(&mut self, timestamp: f64) {
         let ActuationCommandStamped {
             actuation:
                 ActuationCommand {
@@ -390,7 +411,7 @@ impl<'a> VehicleBridge<'a> {
             _ => { /* Do nothing */ }
         };
 
-        // Convert steer_cmd base on steering curve and speed of the vehicle
+        // Convert steer_cmd based on steering curve and speed of the vehicle
         let steering_curve = self.actor.physics_control().steering_curve;
         let v_x: Vec<f32> = steering_curve.iter().map(|v| v[0]).collect();
         let v_y: Vec<f32> = steering_curve.iter().map(|v| v[1]).collect();
@@ -398,10 +419,8 @@ impl<'a> VehicleBridge<'a> {
         let current_speed = self.actor.velocity().x.abs();
         let max_steer_ratio = interp(&v_x, &v_y, current_speed, &InterpMode::default());
 
-        let max_steer_angle_rad = self.actor.physics_control().wheels[0]
-            .max_steer_angle
-            .to_radians();
-        let steer = -steer_cmd as f32 * max_steer_ratio * max_steer_angle_rad;
+        let steer_norm = self.first_order_steering((-steer_cmd) as f32, timestamp);
+        let steer = steer_norm * max_steer_ratio;
 
         self.actor.apply_control(&VehicleControl {
             throttle: accel_cmd as f32,
@@ -436,7 +455,7 @@ impl ActorBridge for VehicleBridge<'_> {
         self.pub_current_control(timestamp)?;
         self.pub_current_indicator(timestamp)?;
         self.pub_hazard_light(timestamp)?;
-        self.update_carla_control();
+        self.update_carla_control(timestamp);
         Ok(())
     }
 }
