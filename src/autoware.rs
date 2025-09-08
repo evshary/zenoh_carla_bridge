@@ -106,7 +106,7 @@ impl Autoware {
                 let lidar_key = topic_fmt(
                     &self.prefix,
                     &self.mode,
-                    &format!("sensing/lidar/{sensor_name}/pointcloud")
+                    &format!("sensing/lidar/{sensor_name}/pointcloud"),
                 );
                 self.list_lidar.insert(sensor_name.clone(), lidar_key);
             }
@@ -114,7 +114,7 @@ impl Autoware {
                 let lidar_key = topic_fmt(
                     &self.prefix,
                     &self.mode,
-                    &format!("sensing/lidar/{sensor_name}/pointcloud")
+                    &format!("sensing/lidar/{sensor_name}/pointcloud"),
                 );
                 self.list_lidar_semantics
                     .insert(sensor_name.clone(), lidar_key);

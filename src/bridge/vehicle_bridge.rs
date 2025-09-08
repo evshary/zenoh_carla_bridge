@@ -363,7 +363,8 @@ impl<'a> VehicleBridge<'a> {
         if let Some(prev) = self.prev_timestamp {
             let dt = (now_ts - prev).max(0.0) as f32;
             if dt > 0.0 {
-                out = self.prev_steer_output + (steer_input - self.prev_steer_output) * (dt / (self.tau + dt));
+                out = self.prev_steer_output
+                    + (steer_input - self.prev_steer_output) * (dt / (self.tau + dt));
             }
         } else {
             out = steer_input;
