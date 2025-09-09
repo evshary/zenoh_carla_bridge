@@ -22,6 +22,6 @@ serde = "1.0.216"
 serde_derive = "1.0.216"
 serde_json = "1.0.134"
 thiserror = "2.0.9"
-zenoh = "1.4.0"
+zenoh = "1.5.1"
 zenoh-ros-type = "0.3.6"
 # zenoh-ros-type = { git = "https://github.com/evshary/zenoh-ros-type", branch = "main" }
