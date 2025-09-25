@@ -140,36 +140,33 @@ impl Autoware {
             SensorType::CameraRgb => {
                 let raw_key = self.list_image_raw.get(sensor_name);
                 let info_key = self.list_camera_info.get(sensor_name);
-                if raw_key.is_some() && info_key.is_some() {
-                    return Some(vec![
-                        raw_key.unwrap().to_owned(),
-                        info_key.unwrap().to_owned(),
-                    ]);
+                if let (Some(raw_key), Some(info_key)) = (raw_key, info_key) {
+                    return Some(vec![raw_key.to_owned(), info_key.to_owned()]);
                 }
             }
             SensorType::Collision => {}
             SensorType::Imu => {
                 let imu_key = self.list_imu.get(sensor_name);
-                if imu_key.is_some() {
-                    return Some(vec![imu_key.unwrap().to_owned()]);
+                if let Some(imu_key) = imu_key {
+                    return Some(vec![imu_key.to_owned()]);
                 }
             }
             SensorType::LidarRayCast => {
                 let lidar_key = self.list_lidar.get(sensor_name);
-                if lidar_key.is_some() {
-                    return Some(vec![lidar_key.unwrap().to_owned()]);
+                if let Some(lidar_key) = lidar_key {
+                    return Some(vec![lidar_key.to_owned()]);
                 }
             }
             SensorType::LidarRayCastSemantic => {
                 let lidar_key = self.list_lidar_semantics.get(sensor_name);
-                if lidar_key.is_some() {
-                    return Some(vec![lidar_key.unwrap().to_owned()]);
+                if let Some(lidar_key) = lidar_key {
+                    return Some(vec![lidar_key.to_owned()]);
                 }
             }
             SensorType::Gnss => {
                 let gnss_key = self.list_gnss.get(sensor_name);
-                if gnss_key.is_some() {
-                    return Some(vec![gnss_key.unwrap().to_owned()]);
+                if let Some(gnss_key) = gnss_key {
+                    return Some(vec![gnss_key.to_owned()]);
                 }
             }
             SensorType::NotSupport => {}
