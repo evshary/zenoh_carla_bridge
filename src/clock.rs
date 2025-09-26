@@ -7,7 +7,7 @@ use cdr::{CdrLe, Infinite};
 use zenoh::{pubsub::Publisher, Session, Wait};
 use zenoh_ros_type::{builtin_interfaces, rosgraph_msgs};
 
-use crate::{error::Result, put_with_attachment, utils, Mode};
+use crate::{autoware::topic, error::Result, put_with_attachment, utils, Mode};
 
 pub struct SimulatorClock<'a> {
     publisher_clock: Publisher<'a>,
@@ -17,12 +17,9 @@ pub struct SimulatorClock<'a> {
 
 impl<'a> SimulatorClock<'a> {
     pub fn new(z_session: Arc<Session>, mode: Mode) -> Result<SimulatorClock<'a>> {
-        // If the mode is RmwZenoh, it will use the Zenoh key expression format; otherwise, it will use the standard ROS 2 format.
-        // See: https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#topic-and-service-name-mapping-to-zenoh-key-expressions
         let key = match mode {
-            Mode::RmwZenoh => "*/*/clock/*/*".to_string(),
-            Mode::ROS2 => "*/clock".to_string(),
-            Mode::DDS => "*/rt/clock".to_string(),
+            Mode::DDS => topic("*/rt/", "clock"),
+            _ => topic("*/", "clock"),
         };
         let publisher_clock = z_session.declare_publisher(key).wait()?;
 

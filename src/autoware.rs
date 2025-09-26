@@ -1,16 +1,179 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex, OnceLock,
+    },
+};
+use zenoh::{liveliness::LivelinessToken, Session, Wait};
 
 use crate::{bridge::sensor_bridge::SensorType, Mode};
 
-// This function will format the topic depending on the mode.
-// If the mode is RmwZenoh, it will use the Zenoh key expression format; otherwise, it will use the standard ROS 2 format.
-// See: https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#topic-and-service-name-mapping-to-zenoh-key-expressions
-#[inline]
-fn topic_fmt(prefix: &str, mode: &Mode, base: &str) -> String {
-    if *mode == Mode::RmwZenoh {
-        format!("{prefix}*/{base}/*/*")
-    } else {
-        format!("{prefix}{base}")
+const CARLA_BRIDGE_NODE_ID: &str = "0";
+const NODE_NAME: &str = "carla_bridge";
+
+#[derive(Debug)]
+struct TopicInfo {
+    entity_kind: &'static str,
+    type_name: &'static str,
+    type_hash: &'static str,
+    qos: &'static str,
+}
+
+#[rustfmt::skip]
+fn build_topic_map() -> HashMap<&'static str, TopicInfo> {
+    let mut m = HashMap::new();
+
+    // === Publishers ===
+    m.insert("vehicle/status/actuation_status", TopicInfo { entity_kind: "MP", type_name: "tier4_vehicle_msgs::msg::dds_::ActuationStatusStamped_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/velocity_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::VelocityReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/steering_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::SteeringReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/gear_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::GearReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/control_mode", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::ControlModeReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/turn_indicators_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::TurnIndicatorsReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/hazard_lights_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::HazardLightsReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+
+    // === Subscribers ===
+    m.insert("control/command/actuation_cmd", TopicInfo { entity_kind: "MS", type_name: "tier4_vehicle_msgs::msg::dds_::ActuationCommandStamped_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+    m.insert("control/command/gear_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::GearCommand_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
+    m.insert("control/current_gate_mode", TopicInfo { entity_kind: "MS", type_name: "tier4_control_msgs::msg::dds_::GateMode_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
+    m.insert("control/command/turn_indicators_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::TurnIndicatorsCommand_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
+    m.insert("control/command/hazard_lights_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::HazardLightsCommand_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
+
+    // === Sensors and Clock ===
+    m.insert("sensing/camera/traffic_light/image_raw", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::Image_", type_hash: "TypeHashNotSupported", qos: "2::,5:,:,:,," });
+    m.insert("sensing/camera/traffic_light/camera_info", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::CameraInfo_", type_hash: "TypeHashNotSupported", qos: "2::,5:,:,:,," });
+    m.insert("sensing/imu/tamagawa/imu_raw", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::Imu_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+    m.insert("sensing/lidar/top/pointcloud", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::PointCloud2_", type_hash: "TypeHashNotSupported", qos: "2::,5:,:,:,," });
+    m.insert("sensing/gnss/ublox/nav_sat_fix", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::NavSatFix_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+    m.insert("clock", TopicInfo { entity_kind: "MP", type_name: "rosgraph_msgs::msg::dds_::Clock_", type_hash: "TypeHashNotSupported", qos: "2::,1:,:,:,," });
+
+    m
+}
+
+struct Topics {
+    mode: Mode,
+    z_session: Arc<Session>,
+    map: HashMap<&'static str, TopicInfo>,
+    tokens: Mutex<Vec<LivelinessToken>>,
+    entity_seq: AtomicU64,
+}
+
+impl Topics {
+    /// Create a new Topics instance with an empty liveliness token list.
+    fn new(mode: Mode, z_session: Arc<Session>) -> Self {
+        Self {
+            mode,
+            z_session,
+            map: build_topic_map(),
+            tokens: Mutex::new(Vec::new()),
+            entity_seq: AtomicU64::new(0),
+        }
+    }
+
+    /// This function will be called to declare node liveliness if the mode is RmwZenoh.
+    /// See: https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#graph-cache
+    fn declare_node_liveliness(&self, prefix: &str) {
+        let zid = self.z_session.zid().to_string();
+        let nid = CARLA_BRIDGE_NODE_ID;
+        let node_name = NODE_NAME;
+        let keyexpr = format!(
+            "{}@ros2_lv/0/{}/{}/{}/NN/%/%/{}",
+            prefix, zid, nid, nid, node_name
+        );
+        let token = self
+            .z_session
+            .liveliness()
+            .declare_token(keyexpr)
+            .wait()
+            .unwrap();
+        self.tokens.lock().unwrap().push(token);
+    }
+
+    /// This function will format the topic depending on the mode.
+    /// If the mode is RmwZenoh, it will use the Zenoh key expression format; otherwise, it will use the standard ROS 2 format.
+    /// See: https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#topic-and-service-name-mapping-to-zenoh-key-expressions
+    fn format_topic_key(&self, prefix: &str, base: &str) -> String {
+        match self.mode {
+            Mode::RmwZenoh => {
+                if let Some(info) = self.map.get(base) {
+                    self.declare_topic_liveliness(prefix, base, info);
+                    format!("{prefix}*/{base}/{}/{}", info.type_name, info.type_hash)
+                } else {
+                    log::warn!("unknown base '{}', using wildcard type/hash", base);
+                    format!("{prefix}*/{base}/*/*")
+                }
+            }
+            Mode::ROS2 => format!("{prefix}{base}"),
+            Mode::DDS => format!("{prefix}{base}"),
+        }
+    }
+
+    /// This function will be called to declare topic liveliness if the mode is RmwZenoh.
+    /// See: https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#graph-cache
+    fn declare_topic_liveliness(&self, prefix: &str, base: &str, info: &TopicInfo) {
+        let zid = self.z_session.zid().to_string();
+        let nid = CARLA_BRIDGE_NODE_ID;
+        let eid = self.entity_seq.fetch_add(1, Ordering::Relaxed).to_string();
+        let node_name = NODE_NAME;
+        let mangled_qualified_name = format!("/{base}").replace('/', "%");
+        let keyexpr = format!(
+            "{}@ros2_lv/0/{}/{}/{}/{}/%/%/{}/{}/{}/{}/{}",
+            prefix,
+            zid,
+            nid,
+            eid,
+            info.entity_kind,
+            node_name,
+            mangled_qualified_name,
+            info.type_name,
+            info.type_hash,
+            info.qos
+        );
+        let token = self
+            .z_session
+            .liveliness()
+            .declare_token(keyexpr)
+            .wait()
+            .unwrap();
+        self.tokens.lock().unwrap().push(token);
+    }
+
+    /// This function will undeclare all previously declared liveliness tokens.
+    fn undeclare_all_liveliness(&self) {
+        let mut tokens = self.tokens.lock().unwrap();
+        for t in tokens.drain(..) {
+            if let Err(e) = t.undeclare().wait() {
+                log::warn!("Failed to undeclare liveliness token: {:?}", e);
+            }
+        }
+    }
+}
+
+static TOPICS: OnceLock<Topics> = OnceLock::new();
+
+pub fn setup_topics(mode: Mode, z_session: Arc<Session>) {
+    TOPICS.get_or_init(|| Topics::new(mode, z_session));
+}
+
+pub fn declare_node_liveliness(prefix: &str) {
+    if let Some(t) = TOPICS.get() {
+        if t.mode == Mode::RmwZenoh {
+            t.declare_node_liveliness(prefix);
+        }
+    }
+}
+
+pub fn topic(prefix: &str, base: &str) -> String {
+    TOPICS
+        .get()
+        .expect("setup_topics() must be called first")
+        .format_topic_key(prefix, base)
+}
+
+pub fn undeclare_all_liveliness() {
+    if let Some(t) = TOPICS.get() {
+        t.undeclare_all_liveliness();
     }
 }
 
@@ -48,25 +211,25 @@ impl Autoware {
             Mode::ROS2 | Mode::RmwZenoh => format!("{vehicle_name}/"),
             Mode::DDS => format!("{vehicle_name}/rt/"),
         };
-        let topic = |base: &str| topic_fmt(&prefix, &mode, base);
+        declare_node_liveliness(&prefix);
         Autoware {
             mode: mode.clone(),
             prefix: prefix.clone(),
             _vehicle_name: vehicle_name,
             // Vehicle publish topic
-            topic_actuation_status: topic("vehicle/status/actuation_status"),
-            topic_velocity_status: topic("vehicle/status/velocity_status"),
-            topic_steering_status: topic("vehicle/status/steering_status"),
-            topic_gear_status: topic("vehicle/status/gear_status"),
-            topic_control_mode: topic("vehicle/status/control_mode"),
-            topic_turn_indicators_status: topic("vehicle/status/turn_indicators_status"),
-            topic_hazard_lights_status: topic("vehicle/status/hazard_lights_status"),
+            topic_actuation_status: topic(&prefix, "vehicle/status/actuation_status"),
+            topic_velocity_status: topic(&prefix, "vehicle/status/velocity_status"),
+            topic_steering_status: topic(&prefix, "vehicle/status/steering_status"),
+            topic_gear_status: topic(&prefix, "vehicle/status/gear_status"),
+            topic_control_mode: topic(&prefix, "vehicle/status/control_mode"),
+            topic_turn_indicators_status: topic(&prefix, "vehicle/status/turn_indicators_status"),
+            topic_hazard_lights_status: topic(&prefix, "vehicle/status/hazard_lights_status"),
             // Vehicle subscribe topic
-            topic_actuation_cmd: topic("control/command/actuation_cmd"),
-            topic_gear_cmd: topic("control/command/gear_cmd"),
-            topic_current_gate_mode: topic("control/current_gate_mode"),
-            topic_turn_indicators_cmd: topic("control/command/turn_indicators_cmd"),
-            topic_hazard_lights_cmd: topic("control/command/hazard_lights_cmd"),
+            topic_actuation_cmd: topic(&prefix, "control/command/actuation_cmd"),
+            topic_gear_cmd: topic(&prefix, "control/command/gear_cmd"),
+            topic_current_gate_mode: topic(&prefix, "control/current_gate_mode"),
+            topic_turn_indicators_cmd: topic(&prefix, "control/command/turn_indicators_cmd"),
+            topic_hazard_lights_cmd: topic(&prefix, "control/command/hazard_lights_cmd"),
             // Sensor publish topic
             list_image_raw: HashMap::new(),
             list_camera_info: HashMap::new(),
@@ -80,14 +243,12 @@ impl Autoware {
     pub fn add_sensors(&mut self, sensor_type: SensorType, sensor_name: String) {
         match sensor_type {
             SensorType::CameraRgb => {
-                let raw_key = topic_fmt(
+                let raw_key = topic(
                     &self.prefix,
-                    &self.mode,
                     &format!("sensing/camera/{sensor_name}/image_raw"),
                 );
-                let info_key = topic_fmt(
+                let info_key = topic(
                     &self.prefix,
-                    &self.mode,
                     &format!("sensing/camera/{sensor_name}/camera_info"),
                 );
                 self.list_image_raw.insert(sensor_name.clone(), raw_key);
@@ -95,34 +256,27 @@ impl Autoware {
             }
             SensorType::Collision => {}
             SensorType::Imu => {
-                let imu_key = topic_fmt(
-                    &self.prefix,
-                    &self.mode,
-                    &format!("sensing/imu/{sensor_name}/imu_raw"),
-                );
+                let imu_key = topic(&self.prefix, &format!("sensing/imu/{sensor_name}/imu_raw"));
                 self.list_imu.insert(sensor_name.clone(), imu_key);
             }
             SensorType::LidarRayCast => {
-                let lidar_key = topic_fmt(
+                let lidar_key = topic(
                     &self.prefix,
-                    &self.mode,
                     &format!("sensing/lidar/{sensor_name}/pointcloud"),
                 );
                 self.list_lidar.insert(sensor_name.clone(), lidar_key);
             }
             SensorType::LidarRayCastSemantic => {
-                let lidar_key = topic_fmt(
+                let lidar_key = topic(
                     &self.prefix,
-                    &self.mode,
                     &format!("sensing/lidar/{sensor_name}/pointcloud"),
                 );
                 self.list_lidar_semantics
                     .insert(sensor_name.clone(), lidar_key);
             }
             SensorType::Gnss => {
-                let gnss_key = topic_fmt(
+                let gnss_key = topic(
                     &self.prefix,
-                    &self.mode,
                     &format!("sensing/gnss/{sensor_name}/nav_sat_fix"),
                 );
                 self.list_gnss.insert(sensor_name.clone(), gnss_key);

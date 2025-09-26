@@ -1,0 +1,7 @@
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = false
+
+[build]
+rustflags = ["-C", "force-frame-pointers=yes"]
