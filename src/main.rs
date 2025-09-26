@@ -7,7 +7,10 @@ mod utils;
 
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     thread,
     time::Duration,
 };
@@ -22,7 +25,6 @@ use clock::SimulatorClock;
 use ctrlc;
 use error::{BridgeError, Result};
 use serde_json::json;
-use std::sync::atomic::{AtomicBool, Ordering};
 use zenoh::{Config, Wait};
 
 // The default interval between ticks
