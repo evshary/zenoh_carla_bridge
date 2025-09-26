@@ -22,7 +22,6 @@ use carla::{
 };
 use clap::{Parser, ValueEnum};
 use clock::SimulatorClock;
-use ctrlc;
 use error::{BridgeError, Result};
 use serde_json::json;
 use zenoh::{Config, Wait};
@@ -204,7 +203,7 @@ fn main() -> Result<()> {
                         continue;
                     }
                     Err(err) => {
-                        log::error!("Unexpected error: {:?}", err);
+                        log::error!("Unexpected error: {err:?}");
                         return Err(err);
                     }
                 };

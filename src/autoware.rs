@@ -79,8 +79,7 @@ impl Topics {
         let nid = CARLA_BRIDGE_NODE_ID;
         let node_name = NODE_NAME;
         let keyexpr = format!(
-            "{}@ros2_lv/0/{}/{}/{}/NN/%/%/{}",
-            prefix, zid, nid, nid, node_name
+            "{prefix}@ros2_lv/0/{zid}/{nid}/{nid}/NN/%/%/{node_name}"
         );
         let token = self
             .z_session
@@ -101,7 +100,7 @@ impl Topics {
                     self.declare_topic_liveliness(prefix, base, info);
                     format!("{prefix}*/{base}/{}/{}", info.type_name, info.type_hash)
                 } else {
-                    log::warn!("unknown base '{}', using wildcard type/hash", base);
+                    log::warn!("unknown base '{base}', using wildcard type/hash");
                     format!("{prefix}*/{base}/*/*")
                 }
             }
@@ -145,7 +144,7 @@ impl Topics {
         let mut tokens = self.tokens.lock().unwrap();
         for t in tokens.drain(..) {
             if let Err(e) = t.undeclare().wait() {
-                log::warn!("Failed to undeclare liveliness token: {:?}", e);
+                log::warn!("Failed to undeclare liveliness token: {e:?}");
             }
         }
     }
