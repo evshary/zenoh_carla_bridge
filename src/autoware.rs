@@ -78,9 +78,7 @@ impl Topics {
         let zid = self.z_session.zid().to_string();
         let nid = CARLA_BRIDGE_NODE_ID;
         let node_name = NODE_NAME;
-        let keyexpr = format!(
-            "{prefix}@ros2_lv/0/{zid}/{nid}/{nid}/NN/%/%/{node_name}"
-        );
+        let keyexpr = format!("{prefix}@ros2_lv/0/{zid}/{nid}/{nid}/NN/%/%/{node_name}");
         let token = self
             .z_session
             .liveliness()
