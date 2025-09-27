@@ -386,10 +386,7 @@ impl<'a> VehicleBridge<'a> {
         } = **self.current_actuation_cmd.load();
 
         log::debug!(
-            "Autoware => Bridge: accel_cmd={:.3}, brake_cmd={:.3}, steer_cmd={:.3}",
-            accel_cmd,
-            brake_cmd,
-            steer_cmd,
+            "Autoware => Bridge: accel_cmd={accel_cmd:.3}, brake_cmd={brake_cmd:.3}, steer_cmd={steer_cmd:.3}",
         );
 
         // Default states

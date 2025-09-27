@@ -7,7 +7,10 @@ mod utils;
 
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     thread,
     time::Duration,
 };
@@ -90,6 +93,14 @@ fn main() -> Result<()> {
         None => Mode::ROS2,
     };
 
+    // Flag for graceful shutdown when Ctrl-C is pressed
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+    ctrlc::set_handler(move || {
+        r.store(false, Ordering::SeqCst);
+    })
+    .expect("Failed to set Ctrl-C handler");
+
     log::info!("Running Carla Autoware Zenoh bridge...");
     let mut config = match zenoh_config {
         Some(conf_file) => Config::from_file(conf_file).unwrap(),
@@ -112,6 +123,9 @@ fn main() -> Result<()> {
     // Create bridge list
     let mut bridge_list: HashMap<ActorId, Box<dyn ActorBridge>> = HashMap::new();
 
+    // Initialize Autoware topic map and liveliness
+    autoware::setup_topics(mode.clone(), z_session.clone());
+
     // Create clock publisher
     let simulator_clock = SimulatorClock::new(z_session.clone(), mode.clone())
         .expect("Unable to create simulator clock!");
@@ -130,7 +144,9 @@ fn main() -> Result<()> {
 
     let mut autoware_list: HashMap<String, autoware::Autoware> = HashMap::new();
 
-    loop {
+    // === Main loop ===
+    // Keep running until Ctrl-C is pressed
+    while running.load(Ordering::SeqCst) {
         {
             let mut actor_list: HashMap<ActorId, _> = world
                 .actors()
@@ -148,7 +164,9 @@ fn main() -> Result<()> {
                     Ok(BridgeType::Vehicle(vehicle_name)) => {
                         let aw = autoware_list
                             .entry(vehicle_name.clone())
-                            .or_insert(autoware::Autoware::new(vehicle_name.clone(), mode.clone()));
+                            .or_insert_with(|| {
+                                autoware::Autoware::new(vehicle_name.clone(), mode.clone())
+                            });
                         bridge::actor_bridge::create_bridge(
                             z_session.clone(),
                             actor,
@@ -159,7 +177,9 @@ fn main() -> Result<()> {
                     Ok(BridgeType::Sensor(vehicle_name, sensor_type, sensor_name)) => {
                         let aw = autoware_list
                             .entry(vehicle_name.clone())
-                            .or_insert(autoware::Autoware::new(vehicle_name.clone(), mode.clone()));
+                            .or_insert_with(|| {
+                                autoware::Autoware::new(vehicle_name.clone(), mode.clone())
+                            });
                         aw.add_sensors(sensor_type, sensor_name.clone());
                         bridge::actor_bridge::create_bridge(
                             z_session.clone(),
@@ -183,7 +203,7 @@ fn main() -> Result<()> {
                         continue;
                     }
                     Err(err) => {
-                        log::error!("Unexpected error: {:?}", err);
+                        log::error!("Unexpected error: {err:?}");
                         return Err(err);
                     }
                 };
@@ -210,4 +230,8 @@ fn main() -> Result<()> {
 
         world.wait_for_tick();
     }
+
+    // Clean up all declared liveliness tokens before exit
+    autoware::undeclare_all_liveliness();
+    Ok(())
 }
