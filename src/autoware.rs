@@ -91,6 +91,7 @@ impl Topics {
     /// This function will format the topic depending on the mode.
     /// If the mode is RmwZenoh, it will use the Zenoh key expression format; otherwise, it will use the standard ROS 2 format.
     /// See: https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md#topic-and-service-name-mapping-to-zenoh-key-expressions
+    #[inline]
     fn format_topic_key(&self, prefix: &str, base: &str) -> String {
         match self.mode {
             Mode::RmwZenoh => {
@@ -159,6 +160,8 @@ pub fn declare_node_liveliness(prefix: &str) {
         if t.mode == Mode::RmwZenoh {
             t.declare_node_liveliness(prefix);
         }
+    } else {
+        log::error!("TOPICS not initialized! setup_topics() must be called before declare_node_liveliness()");
     }
 }
 
@@ -171,7 +174,11 @@ pub fn topic(prefix: &str, base: &str) -> String {
 
 pub fn undeclare_all_liveliness() {
     if let Some(t) = TOPICS.get() {
-        t.undeclare_all_liveliness();
+        if t.mode == Mode::RmwZenoh {
+            t.undeclare_all_liveliness();
+        }
+    } else {
+        log::error!("TOPICS not initialized! setup_topics() must be called before undeclare_all_liveliness()");
     }
 }
 
