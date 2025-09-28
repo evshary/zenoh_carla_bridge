@@ -226,17 +226,17 @@ fn register_camera_rgb(
             Ok((MessageType::SensorData, sensor_data)) => {
                 if let Err(e) = put_with_attachment!(image_publisher, sensor_data, attachment, mode)
                 {
-                    log::error!("Failed to publish to {}: {:?}", raw_key, e);
+                    log::error!("Failed to publish to {raw_key}: {e:?}");
                 }
             }
             Ok((MessageType::InfoData, info_data)) => {
                 if let Err(e) = put_with_attachment!(info_publisher, info_data, attachment, mode) {
-                    log::error!("Failed to publish to {}: {:?}", info_key, e);
+                    log::error!("Failed to publish to {info_key}: {e:?}");
                 }
             }
             _ => {
                 // If tx is released, then the thread will stop
-                log::info!("Sensor actor thread for {} stop.", raw_key);
+                log::info!("Sensor actor thread for {raw_key} stop.");
                 break;
             }
         }
@@ -274,10 +274,10 @@ fn register_camera_rgb(
         header.frame_id = String::from("camera4/camera_link");
         if let Ok(data) = data.try_into() {
             if let Err(e) = camera_callback(header.clone(), data, &tx) {
-                log::error!("Failed to call camera_callback: {:?}", e);
+                log::error!("Failed to call camera_callback: {e:?}");
             }
             if let Err(e) = camera_info_callback(header, width, height, fov, &tx) {
-                log::error!("Failed to call camera_info_callback: {:?}", e);
+                log::error!("Failed to call camera_info_callback: {e:?}");
             }
         } else {
             log::error!("Failed to transform camera image");
@@ -303,12 +303,12 @@ fn register_lidar_raycast(
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
                 if let Err(e) = put_with_attachment!(pcd_publisher, sensor_data, attachment, mode) {
-                    log::error!("Failed to publish to {}: {:?}", key, e);
+                    log::error!("Failed to publish to {key}: {e:?}");
                 }
             }
             _ => {
                 // If tx is released, then the thread will stop
-                log::info!("Sensor actor thread for {} stop.", key);
+                log::info!("Sensor actor thread for {key} stop.");
                 break;
             }
         }
@@ -318,7 +318,7 @@ fn register_lidar_raycast(
         header.frame_id = String::from("velodyne_top_base_link");
         if let Ok(data) = data.try_into() {
             if let Err(e) = lidar_callback(header, data, &tx) {
-                log::error!("Failed to call lidar_callback: {:?}", e);
+                log::error!("Failed to call lidar_callback: {e:?}");
             }
         } else {
             log::error!("Failed to transform lidar data");
@@ -344,12 +344,12 @@ fn register_lidar_raycast_semantic(
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
                 if let Err(e) = put_with_attachment!(pcd_publisher, sensor_data, attachment, mode) {
-                    log::error!("Failed to publish to {}: {:?}", key, e);
+                    log::error!("Failed to publish to {key}: {e:?}");
                 }
             }
             _ => {
                 // If tx is released, then the thread will stop
-                log::info!("Sensor actor thread for {} stop.", key);
+                log::info!("Sensor actor thread for {key} stop.");
                 break;
             }
         }
@@ -359,7 +359,7 @@ fn register_lidar_raycast_semantic(
         header.frame_id = String::from("velodyne_top_base_link");
         if let Ok(data) = data.try_into() {
             if let Err(e) = sematic_lidar_callback(header, data, &tx) {
-                log::error!("Failed to call sematic_lidar_callback: {:?}", e);
+                log::error!("Failed to call sematic_lidar_callback: {e:?}");
             }
         } else {
             log::error!("Failed to transform lidar data");
@@ -385,12 +385,12 @@ fn register_imu(
         match rx.recv() {
             Ok((MessageType::SensorData, sensor_data)) => {
                 if let Err(e) = put_with_attachment!(imu_publisher, sensor_data, attachment, mode) {
-                    log::error!("Failed to publish to {}: {:?}", key, e);
+                    log::error!("Failed to publish to {key}: {e:?}");
                 }
             }
             _ => {
                 // If tx is released, then the thread will stop
-                log::info!("Sensor actor thread for {} stop.", key);
+                log::info!("Sensor actor thread for {key} stop.");
                 break;
             }
         }
@@ -400,7 +400,7 @@ fn register_imu(
         header.frame_id = String::from("tamagawa/imu_link");
         if let Ok(data) = data.try_into() {
             if let Err(e) = imu_callback(header, data, &tx) {
-                log::error!("Failed to call imu_callback: {:?}", e);
+                log::error!("Failed to call imu_callback: {e:?}");
             }
         } else {
             log::error!("Failed to transform IMU data");
@@ -426,12 +426,12 @@ fn register_gnss(
             Ok((MessageType::SensorData, sensor_data)) => {
                 if let Err(e) = put_with_attachment!(gnss_publisher, sensor_data, attachment, mode)
                 {
-                    log::error!("Failed to publish to {}: {:?}", key, e);
+                    log::error!("Failed to publish to {key}: {e:?}");
                 }
             }
             _ => {
                 // If tx is released, then the thread will stop
-                log::info!("Sensor actor thread for {} stop.", key);
+                log::info!("Sensor actor thread for {key} stop.");
                 break;
             }
         }
@@ -441,7 +441,7 @@ fn register_gnss(
         header.frame_id = String::from("gnss_link");
         if let Ok(data) = data.try_into() {
             if let Err(e) = gnss_callback(header, data, &tx) {
-                log::error!("Failed to call gnss_callback: {:?}", e);
+                log::error!("Failed to call gnss_callback: {e:?}");
             }
         } else {
             log::error!("Failed to transform GNSS data");
@@ -765,7 +765,7 @@ impl Drop for SensorBridge {
             // Not sure why the tx doesn't release in sensor callback, so rx can't use RecvErr to close the thread
             // I create another message type to notify the thread to close
             if let Err(e) = self.tx.send((MessageType::StopThread, vec![])) {
-                log::error!("Unable to stop the thread: {:?}", e);
+                log::error!("Unable to stop the thread: {e:?}");
             }
         }
     }
