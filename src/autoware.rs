@@ -274,7 +274,7 @@ impl Autoware {
             SensorType::LidarRayCastSemantic => {
                 let lidar_key = topic(
                     &self.prefix,
-                    &format!("sensing/lidar/{sensor_name}/pointcloud"),
+                    &format!("sensing/lidar/{sensor_name}/semantic_pointcloud"),
                 );
                 self.list_lidar_semantics
                     .insert(sensor_name.clone(), lidar_key);
