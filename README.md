@@ -1,7 +1,7 @@
 # zenoh_carla_bridge
 
 The repository can bridge Carla and Autoware with Zenoh.
-The bridge tranforms Carla data into Autoware ROS 2 message and then sends it via Zenoh.
+The bridge transforms Carla data into Autoware ROS 2 messages and then sends it via Zenoh.
 
 If you want to have a quick demo, refer to [autoware_carla_launch](https://autoware-carla-launch.readthedocs.io/en/latest/)
 
@@ -12,7 +12,7 @@ If you want to have a quick demo, refer to [autoware_carla_launch](https://autow
 ```shell
 git clone https://github.com/evshary/zenoh_carla_bridge.git
 cd zenoh_carla_bridge
-cargo build
+CARLA_VERSION=0.9.14 cargo build
 # Run lint
 cargo clippy --all -- -W clippy::all -W clippy::pedantic -W clippy::restriction -W clippy::nursery -D warnings
 ```
@@ -42,7 +42,7 @@ poetry run python3 main.py --rolename "v1"
 
 ```shell
 source /path/to/autoware/install/setup.bash
-RUST_LOG=c=info cargo run
+RUST_LOG=c=info CARLA_VERSION=0.9.14 cargo run
 ```
 
 ## Note
