@@ -23,6 +23,6 @@ serde = "1.0.226"
 serde_derive = "1.0.226"
 serde_json = "1.0.145"
 thiserror = "2.0.16"
-zenoh = "1.5.1"
+zenoh = "1.6.2"
 zenoh-ros-type = "0.3.7"
 ctrlc = { version = "3", features = ["termination"] }
