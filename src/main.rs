@@ -228,7 +228,7 @@ fn main() -> Result<()> {
             .values_mut()
             .try_for_each(|bridge| bridge.step(sec))?;
 
-        world.wait_for_tick();
+        let _ = world.wait_for_tick();
     }
 
     // Clean up all declared liveliness tokens before exit
