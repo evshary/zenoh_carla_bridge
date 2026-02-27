@@ -45,7 +45,7 @@ fn build_topic_map() -> HashMap<&'static str, TopicInfo> {
     m.insert("sensing/camera/traffic_light/image_raw", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::Image_", type_hash: "TypeHashNotSupported", qos: "2::,5:,:,:,," });
     m.insert("sensing/camera/traffic_light/camera_info", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::CameraInfo_", type_hash: "TypeHashNotSupported", qos: "2::,5:,:,:,," });
     m.insert("sensing/imu/tamagawa/imu_raw", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::Imu_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
-    m.insert("sensing/lidar/top/pointcloud", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::PointCloud2_", type_hash: "TypeHashNotSupported", qos: "2::,5:,:,:,," });
+    m.insert("sensing/lidar/top/pointcloud_raw_ex", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::PointCloud2_", type_hash: "TypeHashNotSupported", qos: "2::,5:,:,:,," });
     m.insert("sensing/gnss/ublox/nav_sat_fix", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::NavSatFix_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
     m.insert("clock", TopicInfo { entity_kind: "MP", type_name: "rosgraph_msgs::msg::dds_::Clock_", type_hash: "TypeHashNotSupported", qos: "2::,1:,:,:,," });
 
@@ -267,7 +267,7 @@ impl Autoware {
             SensorType::LidarRayCast => {
                 let lidar_key = topic(
                     &self.prefix,
-                    &format!("sensing/lidar/{sensor_name}/pointcloud"),
+                    &format!("sensing/lidar/{sensor_name}/pointcloud_raw_ex"),
                 );
                 self.list_lidar.insert(sensor_name.clone(), lidar_key);
             }

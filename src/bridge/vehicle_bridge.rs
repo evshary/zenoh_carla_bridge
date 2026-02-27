@@ -411,8 +411,8 @@ impl<'a> VehicleBridge<'a> {
 
         // Convert steer_cmd based on steering curve and speed of the vehicle
         let steering_curve = self.actor.physics_control().steering_curve;
-        let v_x: Vec<f32> = steering_curve.iter().map(|v| v[0]).collect();
-        let v_y: Vec<f32> = steering_curve.iter().map(|v| v[1]).collect();
+        let v_x: Vec<f32> = steering_curve.iter().map(|v| v.x).collect();
+        let v_y: Vec<f32> = steering_curve.iter().map(|v| v.y).collect();
 
         let current_speed = self.actor.velocity().x.abs();
         let max_steer_ratio = interp(&v_x, &v_y, current_speed, &InterpMode::default());
