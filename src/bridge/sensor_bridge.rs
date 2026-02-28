@@ -755,7 +755,7 @@ fn gnss_callback(
 
 fn generate_sensor_name(actor: &Sensor) -> String {
     let loc = actor.location();
-    format!("{}_{}_{}",  loc.x, loc.y, loc.z)
+    format!("{}_{}_{}", loc.x, loc.y, loc.z)
 }
 
 impl Drop for SensorBridge {
