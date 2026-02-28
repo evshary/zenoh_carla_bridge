@@ -26,28 +26,28 @@ fn build_topic_map() -> HashMap<&'static str, TopicInfo> {
     let mut m = HashMap::new();
 
     // === Publishers ===
-    m.insert("vehicle/status/actuation_status", TopicInfo { entity_kind: "MP", type_name: "tier4_vehicle_msgs::msg::dds_::ActuationStatusStamped_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
-    m.insert("vehicle/status/velocity_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::VelocityReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
-    m.insert("vehicle/status/steering_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::SteeringReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
-    m.insert("vehicle/status/gear_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::GearReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
-    m.insert("vehicle/status/control_mode", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::ControlModeReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
-    m.insert("vehicle/status/turn_indicators_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::TurnIndicatorsReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
-    m.insert("vehicle/status/hazard_lights_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::HazardLightsReport_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/actuation_status", TopicInfo { entity_kind: "MP", type_name: "tier4_vehicle_msgs::msg::dds_::ActuationStatusStamped_", type_hash: "RIHS01_5d8915c8cb84d6df9377f3225a44f84cffb9ad1f4eec4cf6650cf5e417a47e54", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/velocity_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::VelocityReport_", type_hash: "RIHS01_9052adda949c32f4a98500abc1fb5bd23f2560e321eebdfbb25318d6108d4ce4", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/steering_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::SteeringReport_", type_hash: "RIHS01_aa3acc9ca95ebc4daf9dec0ecf87911ad9c196392857c3026bfead589db65a94", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/gear_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::GearReport_", type_hash: "RIHS01_4d14bc3f186c1a6af6a732bb5ebd540cdd742a56770012f4c3cb9e762de8f391", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/control_mode", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::ControlModeReport_", type_hash: "RIHS01_968feaa6441be3c3b161f2eb65972a4b15394d0a7ddc4664318551280d1ff222", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/turn_indicators_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::TurnIndicatorsReport_", type_hash: "RIHS01_c05a54cd244f1c9d683613b11c87a5b3ef816eed7a5f207368301221731a0964", qos: "::,1:,:,:,," });
+    m.insert("vehicle/status/hazard_lights_status", TopicInfo { entity_kind: "MP", type_name: "autoware_vehicle_msgs::msg::dds_::HazardLightsReport_", type_hash: "RIHS01_01ce3b4293a5c2799fd7483b2d62a790e26fe8f2b5d60e48149163475685f28a", qos: "::,1:,:,:,," });
 
     // === Subscribers ===
-    m.insert("control/command/actuation_cmd", TopicInfo { entity_kind: "MS", type_name: "tier4_vehicle_msgs::msg::dds_::ActuationCommandStamped_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
-    m.insert("control/command/gear_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::GearCommand_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
-    m.insert("control/current_gate_mode", TopicInfo { entity_kind: "MS", type_name: "tier4_control_msgs::msg::dds_::GateMode_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
-    m.insert("control/command/turn_indicators_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::TurnIndicatorsCommand_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
-    m.insert("control/command/hazard_lights_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::HazardLightsCommand_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
+    m.insert("control/command/actuation_cmd", TopicInfo { entity_kind: "MS", type_name: "tier4_vehicle_msgs::msg::dds_::ActuationCommandStamped_", type_hash: "RIHS01_7e8733fe7fe1ab38ea59515131eed65fde89209e397d3ef523c5ef423a9bf880", qos: "::,1:,:,:,," });
+    m.insert("control/command/gear_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::GearCommand_", type_hash: "RIHS01_4aa982c6505fafa9bdca2d243d0a71e46ff9a1e7013767f13a533d0a5d30a1a6", qos: ":1:,1:,:,:,," });
+    m.insert("control/current_gate_mode", TopicInfo { entity_kind: "MS", type_name: "tier4_control_msgs::msg::dds_::GateMode_", type_hash: "RIHS01_ee089211a37637a34ee1ef44e2d37b668d18a187295f7362085708db29c31c2e", qos: ":1:,1:,:,:,," });
+    m.insert("control/command/turn_indicators_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::TurnIndicatorsCommand_", type_hash: "RIHS01_657d7f761a9b02c543e4bf3e0000405906b6169dc0bbfd6637c64fe00d98cec7", qos: ":1:,1:,:,:,," });
+    m.insert("control/command/hazard_lights_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::HazardLightsCommand_", type_hash: "RIHS01_ad2386a78a210625f1fb35f8043ef4e78da58cf01f33c340fa9468e5e8cdd0bc", qos: ":1:,1:,:,:,," });
 
     // === Sensors and Clock ===
-    m.insert("sensing/camera/traffic_light/image_raw", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::Image_", type_hash: "TypeHashNotSupported", qos: "2::,5:,:,:,," });
-    m.insert("sensing/camera/traffic_light/camera_info", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::CameraInfo_", type_hash: "TypeHashNotSupported", qos: "2::,5:,:,:,," });
-    m.insert("sensing/imu/tamagawa/imu_raw", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::Imu_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
-    m.insert("sensing/lidar/top/pointcloud_raw_ex", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::PointCloud2_", type_hash: "TypeHashNotSupported", qos: "2::,5:,:,:,," });
-    m.insert("sensing/gnss/ublox/nav_sat_fix", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::NavSatFix_", type_hash: "TypeHashNotSupported", qos: "::,1:,:,:,," });
-    m.insert("clock", TopicInfo { entity_kind: "MP", type_name: "rosgraph_msgs::msg::dds_::Clock_", type_hash: "TypeHashNotSupported", qos: "2::,1:,:,:,," });
+    m.insert("sensing/camera/traffic_light/image_raw", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::Image_", type_hash: "RIHS01_d31d41a9a4c4bc8eae9be757b0beed306564f7526c88ea6a4588fb9582527d47", qos: "2::,5:,:,:,," });
+    m.insert("sensing/camera/traffic_light/camera_info", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::CameraInfo_", type_hash: "RIHS01_b3dfd68ff46c9d56c80fd3bd4ed22c7a4ddce8c8348f2f59c299e73118e7e275", qos: "2::,5:,:,:,," });
+    m.insert("sensing/imu/tamagawa/imu_raw", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::Imu_", type_hash: "RIHS01_7d9a00ff131080897a5ec7e26e315954b8eae3353c3f995c55faf71574000b5b", qos: "::,1:,:,:,," });
+    m.insert("sensing/lidar/top/pointcloud_raw_ex", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::PointCloud2_", type_hash: "RIHS01_9198cabf7da3796ae6fe19c4cb3bdd3525492988c70522628af5daa124bae2b5", qos: "2::,5:,:,:,," });
+    m.insert("sensing/gnss/ublox/nav_sat_fix", TopicInfo { entity_kind: "MP", type_name: "sensor_msgs::msg::dds_::NavSatFix_", type_hash: "RIHS01_62223ab3fe210a15976021da7afddc9e200dc9ec75231c1b6a557fc598a65404", qos: "::,1:,:,:,," });
+    m.insert("clock", TopicInfo { entity_kind: "MP", type_name: "rosgraph_msgs::msg::dds_::Clock_", type_hash: "RIHS01_692f7a66e93a3c83e71765d033b60349ba68023a8c689a79e48078bcb5c58564", qos: "2::,1:,:,:,," });
 
     m
 }
