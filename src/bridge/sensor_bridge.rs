@@ -11,7 +11,7 @@ use std::{
 
 use carla::{
     client::{ActorBase, Sensor},
-    geom::Location,
+    geom::FfiLocation,
     sensor::{
         data::{
             Color, GnssMeasurement, Image as CarlaImage, ImuMeasurement, LidarDetection,
@@ -21,7 +21,7 @@ use carla::{
     },
 };
 use cdr::{CdrLe, Infinite};
-use nalgebra::{coordinates::XYZ, UnitQuaternion};
+use nalgebra::UnitQuaternion;
 use zenoh::{Session, Wait};
 use zenoh_ros_type::{geometry_msgs, sensor_msgs, std_msgs};
 
@@ -538,7 +538,7 @@ fn lidar_callback(
         .iter()
         .flat_map(|det| {
             let LidarDetection {
-                point: Location { x, y, z },
+                point: FfiLocation { x, y, z },
                 intensity,
             } = *det;
             [y, x, z, intensity]
@@ -616,7 +616,7 @@ fn sematic_lidar_callback(
         .iter()
         .flat_map(|det| {
             let SemanticLidarDetection {
-                point: Location { x, y, z },
+                point: FfiLocation { x, y, z },
                 cos_inc_angle,
                 object_idx,
                 object_tag,
@@ -708,15 +708,15 @@ fn imu_callback(
         },
         orientation_covariance: [0.0; 9],
         angular_velocity: geometry_msgs::Vector3 {
-            x: -gyro[0] as f64,
-            y: gyro[1] as f64,
-            z: -gyro[2] as f64,
+            x: -gyro.x as f64,
+            y: gyro.y as f64,
+            z: -gyro.z as f64,
         },
         angular_velocity_covariance: [0.0; 9],
         linear_acceleration: geometry_msgs::Vector3 {
-            x: accel[0] as f64,
-            y: -accel[1] as f64,
-            z: accel[2] as f64,
+            x: accel.x as f64,
+            y: -accel.y as f64,
+            z: accel.z as f64,
         },
         linear_acceleration_covariance: [0.0; 9],
     };
@@ -734,9 +734,9 @@ fn gnss_callback(
 ) -> Result<()> {
     let gnss_msg = sensor_msgs::NavSatFix {
         header,
-        latitude: measure.latitude(),
+        latitude: -measure.latitude(),
         longitude: measure.longitude(),
-        altitude: measure.attitude() + 17.0,
+        altitude: measure.attitude(),
         status: sensor_msgs::NavSatStatus {
             status: GnssStatus::SbasFix as i8,
             service: GnssService::Gps as u16
@@ -754,8 +754,8 @@ fn gnss_callback(
 }
 
 fn generate_sensor_name(actor: &Sensor) -> String {
-    let XYZ { x, y, z } = *actor.location();
-    format!("{x}_{y}_{z}")
+    let loc = actor.location();
+    format!("{}_{}_{}", loc.x, loc.y, loc.z)
 }
 
 impl Drop for SensorBridge {

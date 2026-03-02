@@ -7,10 +7,10 @@ readme = "README.md"
 packages = [{include = "carla_agent"}]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.12"
 pygame = "^2.1.2"
-carla = "0.9.14"
-numpy = "^1.24.1"
+carla = "0.9.16"
+numpy = "^1.26"
 
 [build-system]
 requires = ["poetry-core"]
