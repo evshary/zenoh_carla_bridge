@@ -1,4 +1,8 @@
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::{
+    atomic::{AtomicU64, AtomicU8, Ordering},
+    Arc,
+};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use arc_swap::ArcSwap;
 use atomic_float::AtomicF32;
@@ -8,8 +12,10 @@ use carla::{
 };
 use cdr::{CdrLe, Infinite};
 use interp::{interp, InterpMode};
+use serde_derive::{Deserialize, Serialize};
 use zenoh::{
     pubsub::{Publisher, Subscriber},
+    query::Queryable,
     Session, Wait,
 };
 use zenoh_ros_type::{
@@ -33,12 +39,56 @@ use crate::{
     put_with_attachment, utils,
 };
 
+// Mirror of autoware_vehicle_msgs/srv/ControlModeCommand (not in zenoh_ros_type).
+#[derive(Debug, Deserialize, Serialize)]
+struct ControlModeCommandRequest {
+    stamp: Time,
+    mode: u8,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct ControlModeCommandResponse {
+    success: bool,
+}
+
+mod control_mode_command {
+    pub const NO_COMMAND: u8 = 0;
+    pub const AUTONOMOUS: u8 = 1;
+    pub const AUTONOMOUS_STEER_ONLY: u8 = 2;
+    pub const AUTONOMOUS_VELOCITY_ONLY: u8 = 3;
+    pub const MANUAL: u8 = 4;
+}
+
+/// control_mode_request rejects when step() hasn't ticked within this window.
+const STEP_FRESHNESS_MS: u64 = 200;
+
+#[inline]
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+fn cmd_to_report(cmd_mode: u8) -> u8 {
+    match cmd_mode {
+        control_mode_command::AUTONOMOUS => control_mode_report::AUTONOMOUS,
+        control_mode_command::AUTONOMOUS_STEER_ONLY => control_mode_report::AUTONOMOUS_STEER_ONLY,
+        control_mode_command::AUTONOMOUS_VELOCITY_ONLY => {
+            control_mode_report::AUTONOMOUS_VELOCITY_ONLY
+        }
+        control_mode_command::MANUAL => control_mode_report::MANUAL,
+        _ => control_mode_report::NO_COMMAND,
+    }
+}
+
 pub struct VehicleBridge<'a> {
     vehicle_name: String,
     actor: Vehicle,
     _subscriber_actuation_cmd: Subscriber<()>,
     _subscriber_gear_cmd: Subscriber<()>,
     _subscriber_gate_mode: Subscriber<()>,
+    _queryable_control_mode_request: Queryable<()>,
     publisher_actuation: Publisher<'a>,
     publisher_velocity: Publisher<'a>,
     publisher_steer: Publisher<'a>,
@@ -50,6 +100,8 @@ pub struct VehicleBridge<'a> {
     current_actuation_cmd: Arc<ArcSwap<ActuationCommandStamped>>,
     current_gear: Arc<ArcSwap<u8>>,
     current_gate_mode: Arc<ArcSwap<GateMode>>,
+    current_control_mode: Arc<AtomicU8>,
+    last_step_ts_ms: Arc<AtomicU64>,
     attachment: Vec<u8>,
     mode: crate::Mode,
     tau: f32,
@@ -184,6 +236,75 @@ impl<'a> VehicleBridge<'a> {
             })
             .wait()?;
 
+        // Queryable for /control/control_mode_request. Liveness gate → reply →
+        // then store: reply-before-store keeps /vehicle/status/control_mode in
+        // lockstep with what Autoware was told, the liveness gate stops the
+        // bridge from rubber-stamping while Carla is unreachable.
+        let current_control_mode = Arc::new(AtomicU8::new(control_mode_report::MANUAL));
+        let cloned_control_mode = current_control_mode.clone();
+        let last_step_ts_ms = Arc::new(AtomicU64::new(now_ms()));
+        let cloned_step_ts = last_step_ts_ms.clone();
+        let queryable_control_mode_request = z_session
+            .declare_queryable(autoware.topic_control_mode_request.clone())
+            .callback_mut(move |query| {
+                let age_ms = now_ms().saturating_sub(cloned_step_ts.load(Ordering::Relaxed));
+                if age_ms > STEP_FRESHNESS_MS {
+                    log::warn!(
+                        "control_mode_request: step loop stale ({}ms > {}ms) — refusing to ack",
+                        age_ms, STEP_FRESHNESS_MS
+                    );
+                    let resp = ControlModeCommandResponse { success: false };
+                    if let Ok(bytes) = cdr::serialize::<_, _, CdrLe>(&resp, Infinite) {
+                        let _ = query.reply(query.key_expr().clone(), bytes).wait();
+                    }
+                    return;
+                }
+
+                let req_result: std::result::Result<ControlModeCommandRequest, _> =
+                    match query.payload() {
+                        Some(p) => cdr::deserialize_from(p.reader(), cdr::size::Infinite),
+                        None => {
+                            log::warn!(
+                                "control_mode_request: query without payload (rejecting)"
+                            );
+                            return;
+                        }
+                    };
+
+                // Decide success + which mode we'd accept, but DO NOT store yet.
+                let (success, accepted_mode) = match &req_result {
+                    Ok(req) => (true, Some((req.mode, cmd_to_report(req.mode)))),
+                    Err(e) => {
+                        log::warn!("control_mode_request: failed to parse request: {e}");
+                        (false, None)
+                    }
+                };
+
+                let resp = ControlModeCommandResponse { success };
+                let bytes = match cdr::serialize::<_, _, CdrLe>(&resp, Infinite) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        log::error!("control_mode_request: failed to serialize response: {e}");
+                        return;
+                    }
+                };
+                if let Err(e) = query.reply(query.key_expr().clone(), bytes).wait() {
+                    log::error!(
+                        "control_mode_request: reply failed: {e} — keeping control_mode unchanged"
+                    );
+                    return;
+                }
+
+                // Reply delivered — only now publish the accepted mode.
+                if let Some((cmd_mode, report_mode)) = accepted_mode {
+                    cloned_control_mode.store(report_mode, Ordering::SeqCst);
+                    log::info!(
+                        "control_mode_request: accepted mode={cmd_mode} (report_mode={report_mode})"
+                    );
+                }
+            })
+            .wait()?;
+
         // Generate rmw_zenoh-compatible attachment
         let attachment = utils::generate_attachment();
 
@@ -193,6 +314,7 @@ impl<'a> VehicleBridge<'a> {
             _subscriber_actuation_cmd: subscriber_actuation_cmd,
             _subscriber_gear_cmd: subscriber_gear_cmd,
             _subscriber_gate_mode: subscriber_gate_mode,
+            _queryable_control_mode_request: queryable_control_mode_request,
             publisher_actuation,
             publisher_velocity,
             publisher_steer,
@@ -204,6 +326,8 @@ impl<'a> VehicleBridge<'a> {
             current_actuation_cmd,
             current_gear,
             current_gate_mode,
+            current_control_mode,
+            last_step_ts_ms,
             attachment,
             mode: autoware.mode.clone(),
             tau: 0.2,
@@ -303,11 +427,7 @@ impl<'a> VehicleBridge<'a> {
     }
 
     fn pub_current_control(&mut self, timestamp: f64) -> Result<()> {
-        let mode = if self.current_gate_mode.load().data == gate_mode_data::AUTO {
-            control_mode_report::AUTONOMOUS
-        } else {
-            control_mode_report::MANUAL
-        };
+        let mode = self.current_control_mode.load(Ordering::SeqCst);
         let control_msg = ControlModeReport {
             stamp: Time {
                 sec: timestamp.floor() as i32,
@@ -375,6 +495,17 @@ impl<'a> VehicleBridge<'a> {
     }
 
     fn update_carla_control(&mut self, timestamp: f64) {
+        // MANUAL means no by-wire authority — let the actor coast.
+        let mode = self.current_control_mode.load(Ordering::SeqCst);
+        if !matches!(
+            mode,
+            control_mode_report::AUTONOMOUS
+                | control_mode_report::AUTONOMOUS_STEER_ONLY
+                | control_mode_report::AUTONOMOUS_VELOCITY_ONLY
+        ) {
+            return;
+        }
+
         let ActuationCommandStamped {
             actuation:
                 ActuationCommand {
@@ -454,6 +585,7 @@ impl ActorBridge for VehicleBridge<'_> {
         self.pub_current_indicator(timestamp)?;
         self.pub_hazard_light(timestamp)?;
         self.update_carla_control(timestamp);
+        self.last_step_ts_ms.store(now_ms(), Ordering::Relaxed);
         Ok(())
     }
 }

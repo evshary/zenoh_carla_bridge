@@ -201,6 +201,7 @@ pub struct Autoware {
     pub topic_current_gate_mode: String,
     pub topic_turn_indicators_cmd: String,
     pub topic_hazard_lights_cmd: String,
+    pub topic_control_mode_request: String,
     // Sensor publish topic
     pub list_image_raw: HashMap<String, String>,
     pub list_camera_info: HashMap<String, String>,
@@ -235,6 +236,7 @@ impl Autoware {
             topic_current_gate_mode: topic(&prefix, "control/current_gate_mode"),
             topic_turn_indicators_cmd: topic(&prefix, "control/command/turn_indicators_cmd"),
             topic_hazard_lights_cmd: topic(&prefix, "control/command/hazard_lights_cmd"),
+            topic_control_mode_request: topic(&prefix, "control/control_mode_request"),
             // Sensor publish topic
             list_image_raw: HashMap::new(),
             list_camera_info: HashMap::new(),
