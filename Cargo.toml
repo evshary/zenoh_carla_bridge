@@ -8,6 +8,11 @@ version = "0.12.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["initialpose"]
+# Mirror /initialpose onto the Carla actor when Autoware re-seeds localization.
+initialpose = []
+
 [dependencies]
 atomic_float = "1.1.0"
 arc-swap = "1.6.0"
@@ -20,10 +25,15 @@ nalgebra = "0.32.3"
 ndarray = "0.16.1"
 pretty_env_logger = "0.5.0"
 serde = "1.0.226"
-serde-big-array = "0.5"
 serde_derive = "1.0.226"
 serde_json = "1.0.145"
 thiserror = "2.0.16"
 zenoh =  { version = "1.7.2", features = ["shared-memory"] }
 zenoh-ros-type = "0.3.7"
 ctrlc = { version = "3", features = ["termination"] }
+
+# Temporary override: zenoh-ros-type's PoseWithCovarianceStamped (needed for
+# /initialpose) lives on a feature branch pending release. Remove this block
+# and bump the version above once the upstream crate is published.
+[patch.crates-io]
+zenoh-ros-type = { git = "https://github.com/Shiritai/zenoh-ros-type", branch = "feat/pose-with-covariance" }

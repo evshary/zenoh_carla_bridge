@@ -40,6 +40,7 @@ fn build_topic_map() -> HashMap<&'static str, TopicInfo> {
     m.insert("control/current_gate_mode", TopicInfo { entity_kind: "MS", type_name: "tier4_control_msgs::msg::dds_::GateMode_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
     m.insert("control/command/turn_indicators_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::TurnIndicatorsCommand_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
     m.insert("control/command/hazard_lights_cmd", TopicInfo { entity_kind: "MS", type_name: "autoware_vehicle_msgs::msg::dds_::HazardLightsCommand_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
+    #[cfg(feature = "initialpose")]
     m.insert("initialpose", TopicInfo { entity_kind: "MS", type_name: "geometry_msgs::msg::dds_::PoseWithCovarianceStamped_", type_hash: "TypeHashNotSupported", qos: ":1:,1:,:,:,," });
 
     // === Sensors and Clock ===
@@ -202,6 +203,7 @@ pub struct Autoware {
     pub topic_current_gate_mode: String,
     pub topic_turn_indicators_cmd: String,
     pub topic_hazard_lights_cmd: String,
+    #[cfg(feature = "initialpose")]
     pub topic_initialpose: String,
     // Sensor publish topic
     pub list_image_raw: HashMap<String, String>,
@@ -237,6 +239,7 @@ impl Autoware {
             topic_current_gate_mode: topic(&prefix, "control/current_gate_mode"),
             topic_turn_indicators_cmd: topic(&prefix, "control/command/turn_indicators_cmd"),
             topic_hazard_lights_cmd: topic(&prefix, "control/command/hazard_lights_cmd"),
+            #[cfg(feature = "initialpose")]
             topic_initialpose: topic(&prefix, "initialpose"),
             // Sensor publish topic
             list_image_raw: HashMap::new(),

@@ -8,11 +8,14 @@ use carla::{
 };
 use cdr::{CdrLe, Infinite};
 use interp::{interp, InterpMode};
+#[cfg(feature = "initialpose")]
 use nalgebra::{Isometry3, Quaternion, Translation3, UnitQuaternion, Vector3};
 use zenoh::{
     pubsub::{Publisher, Subscriber},
     Session, Wait,
 };
+#[cfg(feature = "initialpose")]
+use zenoh_ros_type::geometry_msgs::PoseWithCovarianceStamped;
 use zenoh_ros_type::{
     autoware_vehicle_msgs::{
         control_mode_report, gear_report, hazard_lights_report, turn_indicators_report,
@@ -31,9 +34,7 @@ use super::actor_bridge::{ActorBridge, BridgeType};
 use crate::{
     autoware::Autoware,
     error::{BridgeError, Result},
-    put_with_attachment,
-    types::PoseWithCovarianceStamped,
-    utils,
+    put_with_attachment, utils,
 };
 
 pub struct VehicleBridge<'a> {
@@ -42,6 +43,7 @@ pub struct VehicleBridge<'a> {
     _subscriber_actuation_cmd: Subscriber<()>,
     _subscriber_gear_cmd: Subscriber<()>,
     _subscriber_gate_mode: Subscriber<()>,
+    #[cfg(feature = "initialpose")]
     _subscriber_initialpose: Subscriber<()>,
     publisher_actuation: Publisher<'a>,
     publisher_velocity: Publisher<'a>,
@@ -54,10 +56,9 @@ pub struct VehicleBridge<'a> {
     current_actuation_cmd: Arc<ArcSwap<ActuationCommandStamped>>,
     current_gear: Arc<ArcSwap<u8>>,
     current_gate_mode: Arc<ArcSwap<GateMode>>,
-    /// Pending initialpose: callbacks set Some(pose), step() consumes and applies.
-    /// Carla actor manipulation is deferred out of the Zenoh callback because
-    /// set_transform isn't guaranteed safe to call concurrently with the main
-    /// physics tick.
+    /// Pending initialpose: callback sets Some(pose), step() consumes and applies.
+    /// set_transform is deferred out of the Zenoh callback thread.
+    #[cfg(feature = "initialpose")]
     pending_initialpose: Arc<ArcSwap<Option<Isometry3<f32>>>>,
     attachment: Vec<u8>,
     mode: crate::Mode,
@@ -192,26 +193,28 @@ impl<'a> VehicleBridge<'a> {
                 // TODO: Not support yet
             })
             .wait()?;
-        // /initialpose subscriber: when Autoware (or our manual_control) re-seeds
-        // localization, mirror the new pose onto the Carla actor so simulator
-        // state stays consistent with Autoware's belief. The actual set_transform
-        // happens in step() to avoid touching Carla's RPC client from a Zenoh
-        // callback thread.
-        let pending_initialpose: Arc<ArcSwap<Option<Isometry3<f32>>>> =
-            Arc::new(ArcSwap::from_pointee(None));
-        let cloned_pending = pending_initialpose.clone();
-        let subscriber_initialpose = z_session
-            .declare_subscriber(autoware.topic_initialpose.clone())
-            .callback_mut(move |sample| {
-                let result: std::result::Result<PoseWithCovarianceStamped, _> =
-                    cdr::deserialize_from(sample.payload().reader(), cdr::size::Infinite);
-                let Ok(msg) = result else {
-                    log::error!("Unable to parse data from /initialpose");
-                    return;
-                };
-                cloned_pending.store(Arc::new(Some(ros_pose_to_carla_isometry(&msg))));
-            })
-            .wait()?;
+        // /initialpose subscriber: when Autoware re-seeds localization, mirror the
+        // new pose onto the Carla actor. set_transform is deferred to step() so it
+        // doesn't touch Carla's RPC client from a Zenoh callback thread.
+        #[cfg(feature = "initialpose")]
+        let (pending_initialpose, subscriber_initialpose) = {
+            let pending: Arc<ArcSwap<Option<Isometry3<f32>>>> =
+                Arc::new(ArcSwap::from_pointee(None));
+            let cloned_pending = pending.clone();
+            let sub = z_session
+                .declare_subscriber(autoware.topic_initialpose.clone())
+                .callback_mut(move |sample| {
+                    let result: std::result::Result<PoseWithCovarianceStamped, _> =
+                        cdr::deserialize_from(sample.payload().reader(), cdr::size::Infinite);
+                    let Ok(msg) = result else {
+                        log::error!("Unable to parse data from /initialpose");
+                        return;
+                    };
+                    cloned_pending.store(Arc::new(Some(ros_pose_to_carla_isometry(&msg))));
+                })
+                .wait()?;
+            (pending, sub)
+        };
 
         // Generate rmw_zenoh-compatible attachment
         let attachment = utils::generate_attachment();
@@ -222,6 +225,7 @@ impl<'a> VehicleBridge<'a> {
             _subscriber_actuation_cmd: subscriber_actuation_cmd,
             _subscriber_gear_cmd: subscriber_gear_cmd,
             _subscriber_gate_mode: subscriber_gate_mode,
+            #[cfg(feature = "initialpose")]
             _subscriber_initialpose: subscriber_initialpose,
             publisher_actuation,
             publisher_velocity,
@@ -234,6 +238,7 @@ impl<'a> VehicleBridge<'a> {
             current_actuation_cmd,
             current_gear,
             current_gate_mode,
+            #[cfg(feature = "initialpose")]
             pending_initialpose,
             attachment,
             mode: autoware.mode.clone(),
@@ -475,14 +480,14 @@ impl<'a> VehicleBridge<'a> {
     }
 
     /// Teleport the Carla actor to the pending /initialpose, if any.
+    #[cfg(feature = "initialpose")]
     fn apply_pending_initialpose(&mut self) {
         let pending = self.pending_initialpose.swap(Arc::new(None));
         if let Some(iso) = pending.as_ref() {
             self.actor.set_transform(iso);
             // Clear velocities so the simulator doesn't fight the teleport
             // with leftover momentum.
-            self.actor
-                .set_target_velocity(&Vector3::new(0.0, 0.0, 0.0));
+            self.actor.set_target_velocity(&Vector3::new(0.0, 0.0, 0.0));
             self.actor
                 .set_target_angular_velocity(&Vector3::new(0.0, 0.0, 0.0));
             log::info!(
@@ -498,6 +503,7 @@ impl<'a> VehicleBridge<'a> {
 
 impl ActorBridge for VehicleBridge<'_> {
     fn step(&mut self, timestamp: f64) -> Result<()> {
+        #[cfg(feature = "initialpose")]
         self.apply_pending_initialpose();
         self.pub_current_actuation(timestamp)?;
         self.pub_current_velocity(timestamp)?;
@@ -520,13 +526,15 @@ impl ActorBridge for VehicleBridge<'_> {
 /// (roll and yaw) but leaves rotations around y (pitch) unchanged. We extract
 /// the euler angles, apply that sign rule, and rebuild the quaternion — this
 /// is correct for arbitrary orientations, not only flat-ground init poses.
+#[cfg(feature = "initialpose")]
 fn ros_pose_to_carla_isometry(msg: &PoseWithCovarianceStamped) -> Isometry3<f32> {
     let p = &msg.pose.pose.position;
     let q = &msg.pose.pose.orientation;
     let translation = Translation3::new(p.x as f32, -p.y as f32, p.z as f32);
     let (roll, pitch, yaw) = UnitQuaternion::from_quaternion(Quaternion::new(
         q.w as f32, q.x as f32, q.y as f32, q.z as f32,
-    )).euler_angles();
+    ))
+    .euler_angles();
     let rotation = UnitQuaternion::from_euler_angles(-roll, pitch, -yaw);
     Isometry3::from_parts(translation, rotation)
 }
