@@ -1,4 +1,4 @@
-# Ignore poetry environment
+# Ignore uv environment
 .venv
 # Ignore python cache
 __pycache__
