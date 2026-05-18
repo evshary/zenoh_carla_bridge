@@ -5205,7 +5205,7 @@ dependencies = [
 [[package]]
 name = "zenoh-ros-derive"
 version = "0.3.7"
-source = "git+https://github.com/Shiritai/zenoh-ros-type?branch=feat%2Fpose-with-covariance#7a8d0586781b3a922cad05cb169d9331c1c0f731"
+source = "git+https://github.com/evshary/zenoh-ros-type?branch=main#ec4d3046c36a5e06b981b38ed341c12729de4cde"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5215,7 +5215,7 @@ dependencies = [
 [[package]]
 name = "zenoh-ros-type"
 version = "0.3.7"
-source = "git+https://github.com/Shiritai/zenoh-ros-type?branch=feat%2Fpose-with-covariance#7a8d0586781b3a922cad05cb169d9331c1c0f731"
+source = "git+https://github.com/evshary/zenoh-ros-type?branch=main#ec4d3046c36a5e06b981b38ed341c12729de4cde"
 dependencies = [
  "cdr",
  "paste",
