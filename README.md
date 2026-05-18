@@ -29,7 +29,7 @@ cargo clippy --all -- -W clippy::all -W clippy::pedantic -W clippy::restriction 
 
 ```shell
 cd carla_agent/
-poetry run python3 main.py --rolename "v1"
+uv run python3 main.py --rolename "v1"
 ```
 
 * Terminal3: Run zenoh-bridge-ros2dds
@@ -62,6 +62,5 @@ export CLANG_PATH=/usr/bin/clang-12
 You can use pre-commit and Ruff to have correct Python format
 
 ```shell
-python3 -m pip install pre-commit ruff
-pre-commit install --install-hooks
+uv run --project carla_agent pre-commit install --install-hooks
 ```

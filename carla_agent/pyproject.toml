@@ -1,20 +1,20 @@
-[tool.poetry]
+[project]
 name = "carla-agent"
 version = "0.1.0"
 description = ""
-authors = ["ChenYing Kuo <evshary@gmail.com>"]
-readme = "README.md"
-packages = [{include = "carla_agent"}]
+authors = [{ name = "ChenYing Kuo", email = "evshary@gmail.com" }]
+requires-python = ">=3.12,<4"
+dependencies = [
+    "pygame>=2.1.2,<3",
+    "carla==0.9.16",
+    "numpy>=1.26,<2",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-pygame = "^2.1.2"
-carla = "0.9.16"
-numpy = "^1.26"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[dependency-groups]
+dev = [
+    "pre-commit>=4.0.0",
+    "ruff>=0.8.0",
+]
 
 # Ruff
 [tool.ruff]
