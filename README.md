@@ -70,5 +70,5 @@ uv run --project carla_agent pre-commit install --install-hooks
 | Avatar | GitHub ID | Name |
 | --- | --- | --- |
 | <a href="https://github.com/evshary"><img src="https://github.com/evshary.png" width="48" alt="evshary" /></a> | [@evshary](https://github.com/evshary) | ChenYing Kuo |
-| <a href="https://github.com/habby1012"><img src="https://github.com/habby1012.png" width="48" alt="habby1012" /></a> | [@habby1012](https://github.com/habby1012) | Habby Hsu |
+| <a href="https://github.com/habby1012"><img src="https://github.com/habby1012.png" width="48" alt="habby1012" /></a> | [@habby1012](https://github.com/habby1012) | JinWei Hsu |
 | <a href="https://github.com/hsule"><img src="https://github.com/hsule.png" width="48" alt="hsule" /></a> | [@hsule](https://github.com/hsule) | Leann Hsu |
