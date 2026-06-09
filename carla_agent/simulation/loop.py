@@ -20,8 +20,12 @@ def game_loop(args, doc):
         client = carla.Client(args.host, args.port)
         client.set_timeout(20.0)
 
-        sim_world = client.load_world(config.SIM_WORLD)
-        # sim_world = client.get_world()
+        # --attach lets several agents share one world: only the first run loads
+        # it, the rest get_world() so they don't reload (which destroys actors).
+        if args.attach:
+            sim_world = client.get_world()
+        else:
+            sim_world = client.load_world(config.SIM_WORLD)
         if args.sync:
             original_settings = sim_world.get_settings()
             settings = sim_world.get_settings()

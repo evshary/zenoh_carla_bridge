@@ -65,6 +65,7 @@ def main():
     argparser.add_argument('--rolename', metavar='NAME', default='v1', help='actor role name (default: "v1")')
     argparser.add_argument('--gamma', default=2.2, type=float, help='Gamma correction of the camera (default: 2.2)')
     argparser.add_argument('--sync', action='store_true', help='Activate synchronous mode execution')
+    argparser.add_argument('--attach', action='store_true', help='Attach to the existing world (get_world) instead of loading a new one')
     argparser.add_argument('--pygame', action='store_true', help='Run with pygame')
     argparser.add_argument(
         '--position',
