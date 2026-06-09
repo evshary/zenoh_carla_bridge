@@ -22,6 +22,8 @@ def main():
 
     sim_world = client.load_world(config.SIM_WORLD)
 
+    sensors = []  # collect and keep all the sensors alive
+
     for vehicle_name, position in vehicle_list:
         # vehicles settings
         vehicles = sim_world.get_blueprint_library().filter('vehicle.tesla.model3')
@@ -49,10 +51,10 @@ def main():
         vehicle_actor.apply_physics_control(physics_control)
 
         # Setup sensors
-        _gnss_sensor = GnssSensor(vehicle_actor, sensor_name='ublox')
-        _imu_sensor = IMUSensor(vehicle_actor, sensor_name='tamagawa')
-        _lidar_sensor = LidarSensor(vehicle_actor, sensor_name='top')
-        _rgb_camera = RgbCamera(vehicle_actor, sensor_name='traffic_light')
+        sensors.append((GnssSensor(vehicle_actor, sensor_name='ublox'),
+                        IMUSensor(vehicle_actor, sensor_name='tamagawa'),
+                        LidarSensor(vehicle_actor, sensor_name='top'),
+                        RgbCamera(vehicle_actor, sensor_name='traffic_light')))
 
     while True:
         sim_world.wait_for_tick()
